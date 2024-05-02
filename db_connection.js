@@ -22,7 +22,7 @@ const initDatabase = (db) => {
 
     db.serialize(() => {
 
-        db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", [], (err, row) => {
+        db.get("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('MetaData', 'ChunkHashes')", [], (err, row) => {
 
             if (err) {
                 console.error('Error checking for table', err);
@@ -30,22 +30,34 @@ const initDatabase = (db) => {
             } 
             else if (!row) {
 
-                // Table doesn't exist, create it
                 db.run(
-                    'CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)',
+                    'CREATE TABLE MetaData (fileName TEXT PRIMARY KEY, chunkCount INTEGER, firstChunkNodeID TEXT, firstChunkNodeURL TEXT, merkleRootHash TEXT)',
                     (err) => {
                         if (err) {
-                            console.error('Could not create users table', err);
+                            console.error('Could not create MetaData table', err);
                         } 
                         else {
-                            console.log('Created users table');
+                            console.log('Created MetaData table');
                         }
                     }
                 );
+
+                db.run(
+                    'CREATE TABLE ChunkHashes (chunkID TEXT PRIMARY KEY, fileName TEXT, hash TEXT)',
+                    (err) => {
+                        if (err) {
+                            console.error('Could not create ChunkHashes table', err);
+                        } 
+                        else {
+                            console.log('Created ChunkHashes table');
+                        }
+                    }
+                );
+
                 return;
             } 
             else {
-                console.log('Users table already exists');
+                console.log('Tables already exists');
                 return row;
             }
         });
