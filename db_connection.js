@@ -48,13 +48,13 @@ const initDatabase = () => {
                 );
 
                 db.run(
-                    'CREATE TABLE ChunkHashes (chunkID TEXT PRIMARY KEY, fileName TEXT, hash TEXT)',
+                    'CREATE TABLE ChunkData (chunkID TEXT PRIMARY KEY, fileName TEXT, chunkIndex INTEGER, chunkNodeID TEXT, chunkNodeURL TEXT, chunkHash TEXT)',
                     (err) => {
                         if (err) {
-                            console.error('Could not create ChunkHashes table', err);
+                            console.error('Could not create ChunkData table', err);
                         } 
                         else {
-                            console.log('Created ChunkHashes table');
+                            console.log('Created ChunkData table');
                         }
                     }
                 );
