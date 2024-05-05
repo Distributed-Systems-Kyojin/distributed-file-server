@@ -1,3 +1,6 @@
+const axios = require('axios');
+const db = require('../db_connection').openDatabase();
+
 var nodeList = [];
 
 const addNode = (node) => {
@@ -20,10 +23,16 @@ const isNodeExists = (nodeId, nodeURL) => {
     return nodeList.some(node => node.nodeId === nodeId && node.nodeURL === nodeURL);
 }
 
+const sendFileChunk = async (nodeURL, chunkData) => {
+    let response = await axios.post(nodeURL + '/file/chunk', chunkData)
+    return response;
+}
+
 module.exports = {
     addNode,
     removeNode,
     getNodeList,
     getRandomizedNodeList,
     isNodeExists,
+    sendFileChunk,
 };
