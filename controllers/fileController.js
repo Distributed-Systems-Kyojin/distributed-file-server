@@ -9,7 +9,6 @@ const hash = require('../utils/hash');
 var CHUNK_SIZE = 1024 * 1024; // 1MB
 
 const uploadFile = async (req, res) => {
-
     try {
 
         if (req.file != undefined) {
@@ -56,6 +55,7 @@ const uploadFile = async (req, res) => {
                 };
 
                 let nodeResponse = nodeService.sendFileChunk(node.nodeURL, chunkData);
+                console.log(nodeResponse);
 
                 // TODO: Handle the response from the node
                 if (nodeResponse.status === 200) {
