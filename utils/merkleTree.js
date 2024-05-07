@@ -1,38 +1,48 @@
+const crypto = require('crypto');
+
 class MerkleTree {
+  constructor(chunks) {
+    this.chunks = chunks.map(chunk => this.hashChunk(chunk)); // Hash the initial chunks
+    this.tree = this.buildTree(this.chunks);
+  }
 
-    constructor(chunks) {
-        this.chunks = chunks;
-        this.tree = this.buildTree(chunks);
+  hashChunk(chunk) {
+    // Assuming chunk is a string or buffer, we use SHA-256 for hashing
+    return crypto.createHash('sha256').update(chunk).digest(); // Returns a Buffer
+  }
+
+  combineHashes(hash1, hash2) {
+    // Combine two hashes, hash the combination, and return the result
+    const combined = Buffer.concat([hash1, hash2]);
+    return crypto.createHash('sha256').update(combined).digest(); // Returns a Buffer
+  }
+
+  buildTree(chunks) {
+    if (chunks.length === 1) {
+      return chunks[0]; // Return the root hash
     }
 
-    buildTree(chunks) {
-
-        if (chunks.length === 1) {
-            return chunks[0];
-        }
-
-        const nextLevel = [];
-        for (let i = 0; i < chunks.length; i += 2) {
-            
-            const chunk1 = chunks[i];
-            const chunk2 = chunks[i + 1] || chunk1; // Duplicate last chunk if odd number of chunks
-
-            const combinedHash = this.combineHashes(chunk1, chunk2);
-            nextLevel.push(combinedHash);
-        }
-
-        return this.buildTree(nextLevel);
+    const nextLevel = [];
+    for (let i = 0; i < chunks.length; i += 2) {
+      const hash1 = chunks[i];
+      const hash2 = chunks[i + 1] || hash1; // Duplicate last chunk if odd number of chunks
+      const combinedHash = this.combineHashes(hash1, hash2);
+      nextLevel.push(combinedHash);
     }
 
-    getRootHash() {
-        return this.tree;
-    }
+    return this.buildTree(nextLevel); // Recursively build the tree
+  }
+
+  getRootHash() {
+    return this.tree.toString('hex'); // Convert the root hash to a hexadecimal string
+  }
 }
 
-// Usage example
-// const chunks = ['chunk1', 'chunk2', 'chunk3', 'chunk4'];
+// Example usage
+// const chunks = ['chunk1', 'chunk2', 'chunk3', 'chunk4']; // Some data chunks
 // const merkleTree = new MerkleTree(chunks);
-// const rootHash = merkleTree.getRootHash();
-// console.log('Root Hash:', rootHash);
+
+// console.log('Merkle Tree Root Hash:', merkleTree.getRootHash()); // Output the root hash as a string
+
 
 module.exports = MerkleTree;
