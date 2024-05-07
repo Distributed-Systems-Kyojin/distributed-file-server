@@ -10,7 +10,6 @@ const hash = require('../utils/hash');
 var CHUNK_SIZE = 1024 * 1024; // 1MB
 
 const uploadFile = async (req, res) => {
-
     try {
 
         if (req.file != undefined) {
