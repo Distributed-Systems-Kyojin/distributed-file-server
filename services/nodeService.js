@@ -24,7 +24,8 @@ const isNodeExists = (nodeId, nodeURL) => {
 }
 
 const sendFileChunk = async (nodeURL, chunkData) => {
-    let response = await axios.post(nodeURL + '/file/chunk', chunkData)
+    
+    let response = await axios.post(nodeURL + '/file/save-chunk', chunkData);
     return response;
 }
 

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 const nodeService = require('../services/nodeService');
 const fileService = require('../services/fileService');
@@ -19,10 +20,19 @@ const uploadFile = async (req, res) => {
 
             let chunks = [];
             let nodes = nodeService.getRandomizedNodeList();
-            
-            // split the file into chunks
-            for (let i = 0; i < req.file.buffer.length; i += CHUNK_SIZE) {
-                chunks.push(req.file.buffer.slice(i, i + CHUNK_SIZE));
+
+            const fileBuffer = fs.readFileSync(req.file.path);
+            const fileSize = fileBuffer.length;
+
+            const numChunks = Math.ceil(fileSize / CHUNK_SIZE);
+
+            for (let i = 0; i < numChunks; i++) {
+
+                const start = i * CHUNK_SIZE; // Start index
+                const end = (i + 1) * CHUNK_SIZE; // End index
+                const chunk = fileBuffer.slice(start, end); // Slice the buffer
+
+                chunks.push(chunk); // Keep track of chunk paths
             }
 
             // create a Merkle Tree
@@ -30,14 +40,14 @@ const uploadFile = async (req, res) => {
             let rootHash = mt.getRootHash();
 
             let chunkCount = 0;
-
+            
             while (chunkCount < chunks.length) {
 
                 let node = nodes[chunkCount % nodes.length];
                 let nodeID = node.nodeId;
                 let nodeURL = node.nodeURL;
 
-                let chunk = chunks[i];
+                let chunk = chunks[chunkCount];
                 let chunkHash = hash.generateHash(chunk);
 
                 let chunkId = hash.generateUniqueId(chunkHash);
@@ -54,8 +64,8 @@ const uploadFile = async (req, res) => {
                     nextChunkNodeURL: nextChunkNodeURL,
                     chunkIndex: chunnkIndex,
                 };
-
-                let nodeResponse = nodeService.sendFileChunk(node.nodeURL, chunkData);
+                
+                let nodeResponse = await nodeService.sendFileChunk(node.nodeURL, chunkData);
 
                 // TODO: Handle the response from the node
                 if (nodeResponse.status === 200) {
@@ -73,6 +83,8 @@ const uploadFile = async (req, res) => {
 
                     chunkInfoList.push(chunkInfo);
                     chunkCount += 1;
+
+                    console.log(`${chunkCount} chunks uploaded`);
                 }
                 else {
                     console.error(`Error uploading Chunk ${chunkCount} to Node ${nodeID}`);
@@ -82,27 +94,29 @@ const uploadFile = async (req, res) => {
 
             if (await fileService.saveChunkDataList(chunkInfoList)) {
 
+                console.log('Chunk info saved successfully');
+
                 let metaData = {
                     fileName: fileName,
                     chunkCount: chunks.length,
-                    firstChunkNodeID: nodes[0].nodeID,
+                    firstChunkNodeID: nodes[0].nodeId,
                     firstChunkNodeURL: nodes[0].nodeURL,
                     merkleRootHash: rootHash
                 }
 
-                if (await fileService.saveMetadata(metaData)){
+                try {
 
-                    // TODO: Empty the data folder
+                    await fileService.saveMetadata(metaData);
                     deleteTemporyFiles();
 
                     res.status(200).send({
                         message: "Uploaded the file successfully: " + req.file.originalname,
                     });
-                }
-                else {
+                } 
+                catch (error) {
                     throw new Error(`Error saving file metadata in the file server`);
                 }
-            } 
+            }
             else {
                 throw new Error(`Error saving chunk meta data in the file server`);
             }
@@ -110,7 +124,7 @@ const uploadFile = async (req, res) => {
         else {
             return res.status(400).send("Please upload a file!");
         }
-    } 
+    }
     catch (err) {
 
         res.status(500).send({

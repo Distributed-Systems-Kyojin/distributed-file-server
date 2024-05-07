@@ -2,28 +2,33 @@ const db = require('../db_connection').openDatabase();
 
 const saveChunkData = async (chunkData) => {
 
-    db.run(
-        `INSERT INTO ChunkData (chunkID, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?)`,
-        [chunkData.chunkId, chunkData.fileName, chunkData.chunkIndex, chunkData.nodeId, chunkData.nodeURL, chunkData.chunkHash],
-        (err) => {
-            if (err) {
-                console.error('Could not save chunk data', err);
-                return false;
+    return new Promise((resolve, reject) => {
+        db.run(
+            `INSERT INTO ChunkData (chunkID, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?)`,
+            [chunkData.chunkId, chunkData.fileName, chunkData.chunkIndex, chunkData.nodeId, chunkData.nodeURL, chunkData.chunkHash],
+            (err) => {
+                if (err) {
+                    console.error('Could not save chunk data', err);
+                    return reject(err);
+                }
+                else {
+                    console.log(`Chunk ${chunkData.chunkIndex}  data saved successfully`);
+                    resolve();
+                }
             }
-            else {
-                console.log(`Chunk ${chunkIndex}  data saved successfully`);
-                return true;
-            }
-        }
-    );
+        );
+    });
 }
 
 const saveChunkDataList = async (chunkDataList) => {
 
     for (const chunkData of chunkDataList) {
 
-        let response = await saveChunkData(chunkData);
-        if (!response){
+        try {
+            await saveChunkData(chunkData);
+        } 
+        catch (error) {
+            console.error(`Error saving chunk data for chunk ${chunkData.chunkIndex}`);
             return false;
         }
     }
@@ -32,19 +37,22 @@ const saveChunkDataList = async (chunkDataList) => {
 
 const saveMetadata = async (metadata) => {
 
-    db.run(
-        `INSERT INTO Metadata (fileName, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash) VALUES (?, ?, ?, ?, ?)`,
-        [metadata.fileName, metadata.chunkCount, metadata.chunkCount, metadata.firstChunkNodeURL, metadata.merkleRootHash],
-        (err) => {
-            if (err) {
-                console.error('Could not save metadata', err);
-                return false;
-            } else {
-                console.log('Metadata saved successfully');
-                return true;
+    return new Promise((resolve, reject) => {
+        db.run(
+            `INSERT INTO Metadata (fileName, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash) VALUES (?, ?, ?, ?, ?)`,
+            [metadata.fileName, metadata.chunkCount, metadata.chunkCount, metadata.firstChunkNodeURL, metadata.merkleRootHash],
+            (err) => {
+                if (err) {
+                    console.error('Could not save metadata', err);
+                    return reject(err);
+                } 
+                else {
+                    console.log('Metadata saved successfully');
+                    resolve();
+                }
             }
-        }
-    );
+        );
+    });
 }
 
 module.exports = {
