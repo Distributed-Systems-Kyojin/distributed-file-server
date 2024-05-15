@@ -5,6 +5,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const nodeRoutes = require('./routes/nodeRoutes');
+const fileRoutes = require('./routes/fileRoutes');
 
 const makeApp = () => {
     // express app
@@ -43,6 +44,7 @@ const makeApp = () => {
 
     //routes
     app.use('/node', nodeRoutes);
+    app.use('/file', fileRoutes);
 
     return app;
 }
