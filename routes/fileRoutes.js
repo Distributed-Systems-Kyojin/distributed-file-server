@@ -8,5 +8,6 @@ const fileController = require('../controllers/fileController');
 const router = express.Router();
 
 router.post('/upload', upload.single('file'), fileController.uploadFile);
+router.get('/retrieve/:filename', fileController.retrieveFile);
 
 module.exports = router;

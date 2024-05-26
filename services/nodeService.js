@@ -23,11 +23,23 @@ const isNodeExists = (nodeId, nodeURL) => {
     return nodeList.some(node => node.nodeId === nodeId && node.nodeURL === nodeURL);
 }
 
-const sendFileChunk = async (nodeURL, chunkData) => {
-    
+const sendFileChunk = async(nodeURL, chunkData) => {
+
     let response = await axios.post(nodeURL + '/file/save-chunk', chunkData);
     return response;
 }
+
+const retrieveChunk = async(nodeURL, fileName, chunkIndex) => {
+    try {
+        const response = await axios.get(`${nodeURL}/file/get-chunk`, {
+            params: { fileName, chunkIndex }
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error retrieving chunk ${chunkIndex} from ${nodeURL}: ${error.message}`);
+        return null;
+    }
+};
 
 module.exports = {
     addNode,
@@ -36,4 +48,5 @@ module.exports = {
     getRandomizedNodeList,
     isNodeExists,
     sendFileChunk,
+    retrieveChunk
 };

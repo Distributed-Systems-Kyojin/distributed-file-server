@@ -1,4 +1,6 @@
-const axios = require('axios');
+const db = require('../db_connection').openDatabase();
+const merkleTree = require('../utils/merkleTree');
+const nodeService = require('./nodeService');
 
 const retrieveFile = async(fileName) => {
     try {
@@ -7,9 +9,8 @@ const retrieveFile = async(fileName) => {
         if (!metadata) {
             return null;
         }
-
         // Retrieve chunks from nodes
-        const chunks = await getChunks(metadata.locationOfFirstChunk, fileName);
+        const chunks = await getChunks(metadata.firstChunkNodeURL, metadata.fileName);
 
         // Verify Merkle Root hash
         const isAuthentic = verifyMerkleRoot(metadata.merkleRootHash, chunks);
@@ -19,41 +20,37 @@ const retrieveFile = async(fileName) => {
         }
 
         // Merge chunks
-        const fileData = mergeChunks(chunks);
+        const fileBuffer = mergeChunks(chunks);
         console.log('File retrieved successfully');
-        return fileData;
+        return fileBuffer;
+
     } catch (error) {
         console.error('Error retrieving file:', error);
         return null;
     }
 };
 
-const getMetadata = async(fileName) => {
-    // Implement logic to retrieve metadata for the file
-};
 
-const getChunks = async(firstChunkUrl, fileName) => {
+
+const getChunks = async(firstChunkNodeURL, fileName) => {
     const chunks = [];
-    let nodeUrl = firstChunkUrl;
-    let chunkId = 0;
+    let nodeUrl = firstChunkNodeURL;
+    let chunkIndex = 0; // how to get the first chunkID
 
     try {
-        while (nodeUrl !== 'null') {
-            const response = await axios.post(`${nodeUrl}/api/node/retrieve`, {
-                fileName: fileName,
-                chunkId: chunkId
-            });
+        while (nodeUrl !== '') {
+            const response = await nodeService.retrieveChunk(nodeUrl, fileName, chunkIndex);
 
             if (response.status === 200) {
                 const retrieveResponse = response.data;
 
                 chunks.push(retrieveResponse.chunk);
-                nodeUrl = retrieveResponse.nextNode;
-                chunkId++;
+                nodeUrl = retrieveResponse.nextChunkNodeURL;
+                chunkIndex++;
 
-                console.log(`Chunk ${chunkId} retrieved from node ${nodeUrl}`);
+                console.log(`Chunk ${chunkIndex} retrieved from node ${nodeUrl}`);
             } else {
-                throw new Error(`Failed to retrieve chunk ${chunkId} from node ${nodeUrl}`);
+                throw new Error(`Failed to retrieve chunk ${chunkIndex} from node ${nodeUrl}`);
             }
         }
 
@@ -64,23 +61,21 @@ const getChunks = async(firstChunkUrl, fileName) => {
     }
 };
 
-module.exports = {
-    getChunks,
-};
+
 
 const verifyMerkleRoot = (merkleRootHash, chunks) => {
     // Implement logic to verify the Merkle Root hash
+    const mt = new merkleTree(chunks);
+    const calculatedRootHash = mt.getRootHash();
+    return calculatedRootHash === merkleRootHash;
 };
+
 
 const mergeChunks = (fileChunks) => {
     const mergedOutput = Buffer.concat(fileChunks);
     return mergedOutput;
 };
 
-module.exports = {
-    retrieveFile,
-};
-const db = require('../db_connection').openDatabase();
 
 const saveChunkData = async(chunkData) => {
 
@@ -131,9 +126,40 @@ const saveMetadata = async(metadata) => {
         );
     });
 }
+const getMetadata = async(fileName) => {
+    return new Promise((resolve, reject) => {
+        db.get(
+            `SELECT * FROM Metadata WHERE fileName = ?`, [fileName],
+            (err, row) => {
+                if (err) {
+                    console.error('Error retrieving metadata:', err);
+                    return reject(err);
+                } else {
+                    if (!row) {
+                        // If no metadata is found for the given fileName
+                        return resolve(null);
+                    }
+                    // Construct the metadata object
+                    const metadata = {
+                        fileName: row.fileName,
+                        chunkCount: row.chunkCount,
+                        firstChunkNodeID: row.firstChunkNodeID,
+                        firstChunkNodeURL: row.firstChunkNodeURL,
+                        merkleRootHash: row.merkleRootHash
+                    };
+                    resolve(metadata);
+                }
+            }
+        );
+    });
+};
 
 module.exports = {
+    retrieveFile,
+    getChunks,
     saveChunkData,
     saveChunkDataList,
-    saveMetadata
+    saveMetadata,
+    getMetadata
+
 };
