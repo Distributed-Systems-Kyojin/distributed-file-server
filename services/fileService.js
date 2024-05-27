@@ -7,10 +7,12 @@ const retrieveFile = async(fileName) => {
         // Retrieve metadata for the file
         const metadata = await getMetadata(fileName);
         if (!metadata) {
+            console.log("No Metadata found");
             return null;
         }
+        
         // Retrieve chunks from nodes
-        const chunks = await getChunks(metadata.firstChunkNodeURL, metadata.fileName);
+        const chunks = await getChunks(metadata.fileName);
 
         // Verify Merkle Root hash
         const isAuthentic = verifyMerkleRoot(metadata.merkleRootHash, chunks);
@@ -25,48 +27,49 @@ const retrieveFile = async(fileName) => {
         return fileBuffer;
 
     } catch (error) {
-        console.error('Error retrieving file:', error);
+        console.error('Error retrieving file (fileService):', error);
         return null;
     }
 };
 
-
-
-const getChunks = async(firstChunkNodeURL, fileName) => {
+const getChunks = async(fileName) => {
+    
+    let chunkDataList = await getChunkData(fileName);
     const chunks = [];
-    let nodeUrl = firstChunkNodeURL;
-    let chunkIndex = 0; // how to get the first chunkID
+    let nodeURL;
 
     try {
-        while (nodeUrl !== '') {
-            const response = await nodeService.retrieveChunk(nodeUrl, fileName, chunkIndex);
+        for (let chunkIndex = 0; chunkIndex < chunkDataList.length; chunkIndex++) {
+
+            nodeURL = chunkDataList[chunkIndex].chunkNodeURL;
+            const response = await nodeService.retrieveChunk(nodeURL, fileName, chunkIndex);
 
             if (response.status === 200) {
+
                 const retrieveResponse = response.data;
+                chunks.push(retrieveResponse.chunkData);
 
-                chunks.push(retrieveResponse.chunk);
-                nodeUrl = retrieveResponse.nextChunkNodeURL;
-                chunkIndex++;
-
-                console.log(`Chunk ${chunkIndex} retrieved from node ${nodeUrl}`);
-            } else {
-                throw new Error(`Failed to retrieve chunk ${chunkIndex} from node ${nodeUrl}`);
+                console.log(`Chunk ${chunkIndex} retrieved from node ${nodeURL}`);
+            } 
+            else {
+                throw new Error(`Failed to retrieve chunk ${chunkIndex} from node ${nodeURL}`);
             }
         }
 
         return chunks;
-    } catch (error) {
-        console.error(`Error retrieving chunks: ${error}`);
+    } 
+    catch (error) {
+        console.error(`Error retrieving chunks (getChunks): ${error}`);
         throw error;
     }
 };
-
-
 
 const verifyMerkleRoot = (merkleRootHash, chunks) => {
     // Implement logic to verify the Merkle Root hash
     const mt = new merkleTree(chunks);
     const calculatedRootHash = mt.getRootHash();
+    console.log(merkleRootHash)
+    console.log(calculatedRootHash)
     return calculatedRootHash === merkleRootHash;
 };
 
@@ -81,7 +84,7 @@ const saveChunkData = async(chunkData) => {
 
     return new Promise((resolve, reject) => {
         db.run(
-            `INSERT INTO ChunkData (chunkID, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?)`, [chunkData.chunkId, chunkData.fileName, chunkData.chunkIndex, chunkData.nodeId, chunkData.nodeURL, chunkData.chunkHash],
+            `INSERT INTO ChunkData (chunkID, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?)`, [chunkData.chunkId, chunkData.fileName, chunkData.chunkIndex, chunkData.chunkNodeID, chunkData.chunkNodeURL, chunkData.chunkHash],
             (err) => {
                 if (err) {
                     console.error('Could not save chunk data', err);
@@ -126,7 +129,7 @@ const saveMetadata = async(metadata) => {
         );
     });
 }
-const getMetadata = async(fileName) => {
+const getMetadata = async (fileName) => {
     return new Promise((resolve, reject) => {
         db.get(
             `SELECT * FROM Metadata WHERE fileName = ?`, [fileName],
@@ -154,12 +157,33 @@ const getMetadata = async(fileName) => {
     });
 };
 
+const getChunkData = async (fileName) => {
+
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT * FROM ChunkData WHERE fileName = ? ORDER BY chunkIndex`, [fileName],
+            (err, rows) => {
+                if (err) {
+                    console.error('Error retrieving metadata:', err);
+                    return reject(err);
+                } else {
+                    if (!rows.length === 0) {
+                        // If no metadata is found for the given fileName
+                        return resolve(null);
+                    }
+                    resolve(rows);
+                }
+            }
+        );
+    });
+}
+
 module.exports = {
     retrieveFile,
     getChunks,
     saveChunkData,
     saveChunkDataList,
     saveMetadata,
-    getMetadata
-
+    getMetadata,
+    getChunkData
 };
