@@ -68,8 +68,7 @@ const verifyMerkleRoot = (merkleRootHash, chunks) => {
     // Implement logic to verify the Merkle Root hash
     const mt = new merkleTree(chunks);
     const calculatedRootHash = mt.getRootHash();
-    console.log(merkleRootHash)
-    console.log(calculatedRootHash)
+    
     return calculatedRootHash === merkleRootHash;
 };
 
