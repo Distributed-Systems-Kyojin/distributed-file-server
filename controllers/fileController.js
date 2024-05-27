@@ -9,7 +9,7 @@ const hash = require('../utils/hash');
 
 var CHUNK_SIZE = 1024 * 1024; // 1MB
 
-const uploadFile = async (req, res) => {
+const uploadFile = async(req, res) => {
     try {
 
         if (req.file != undefined) {
@@ -39,7 +39,7 @@ const uploadFile = async (req, res) => {
             let rootHash = mt.getRootHash();
 
             let chunkCount = 0;
-            
+
             while (chunkCount < chunks.length) {
 
                 let node = nodes[chunkCount % nodes.length];
@@ -63,7 +63,7 @@ const uploadFile = async (req, res) => {
                     nextChunkNodeURL: nextChunkNodeURL,
                     chunkIndex: chunnkIndex,
                 };
-                
+
                 let nodeResponse = await nodeService.sendFileChunk(node.nodeURL, chunkData);
 
                 // TODO: Handle the response from the node
@@ -84,8 +84,7 @@ const uploadFile = async (req, res) => {
                     chunkCount += 1;
 
                     console.log(`${chunkCount} chunks uploaded`);
-                }
-                else {
+                } else {
                     console.error(`Error uploading Chunk ${chunkCount} to Node ${nodeID}`);
                     throw new Error(`Error uploading Chunk ${chunkCount} to Node ${nodeID}`);
                 }
@@ -111,20 +110,16 @@ const uploadFile = async (req, res) => {
                     res.status(200).send({
                         message: "file uploaded successfully: " + req.file.originalname,
                     });
-                } 
-                catch (error) {
+                } catch (error) {
                     throw new Error(`Error saving file metadata in the file server`);
                 }
-            }
-            else {
+            } else {
                 throw new Error(`Error saving chunk meta data in the file server`);
             }
-        }
-        else {
+        } else {
             return res.status(400).send("Please upload a file!");
         }
-    }
-    catch (err) {
+    } catch (err) {
 
         res.status(500).send({
             message: `Internal Server Error: Could not upload the file: ${req.file.originalname}. ${err}`,
@@ -156,6 +151,35 @@ const deleteTemporyFiles = () => {
     });
 }
 
+const retrieveFile = async(req, res) => {
+    
+    const fileName = req.params.fileName;
+
+    try {
+        // Retrieve file data
+        const fileData = await fileService.retrieveFile(fileName);
+
+        if (!fileData) {
+            return res.status(404).send({ error: 'File not found' });
+        }
+
+        // Check if file is tampered
+        if (fileData.tampered) {
+            console.warn('File is tampered');
+            return res.status(400).json({ error: 'File is tampered' });
+        }
+        // Send the file to the client
+        res.set('Content-Disposition', `attachment; filename=${fileName}`);
+        res.set('Content-Type', 'application/octet-stream');
+        res.status(200).send(fileData);
+    } catch (error) {
+        console.error('Error retrieving file:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+
 module.exports = {
     uploadFile,
+    retrieveFile
 }
