@@ -34,9 +34,9 @@ const retrieveChunk = async(nodeURL, fileName, chunkIndex) => {
         const response = await axios.get(`${nodeURL}/file/get-chunk`, {
             params: { fileName, chunkIndex }
         });
-        return response.data;
+        return response;
     } catch (error) {
-        console.error(`Error retrieving chunk ${chunkIndex} from ${nodeURL}: ${error.message}`);
+        console.error(`(nodeService) Error retrieving chunk ${chunkIndex} from ${nodeURL}: ${error.message}`);
         return null;
     }
 };
