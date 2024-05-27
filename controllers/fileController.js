@@ -9,7 +9,25 @@ const hash = require('../utils/hash');
 
 var CHUNK_SIZE = 1024 * 1024; // 1MB
 
-const uploadFile = async(req, res) => {
+const write = (list) => {
+
+    // Convert the list to a JSON string
+    const jsonString = JSON.stringify(list, null, 2); // The second argument formats the JSON for readability
+
+    // Define the file path where the JSON file will be saved
+    const filePath = 'list.json';
+
+    // Write the JSON string to a file
+    fs.writeFile(filePath, jsonString, (err) => {
+        if (err) {
+            console.error('Error writing to file', err);
+        } else {
+            console.log('JSON file has been saved');
+        }
+    });
+}
+
+const uploadFile = async (req, res) => {
     try {
 
         if (req.file != undefined) {
@@ -33,6 +51,8 @@ const uploadFile = async(req, res) => {
 
                 chunks.push(chunk); // Keep track of chunk paths
             }
+
+            write(chunks);
 
             // create a Merkle Tree
             let mt = new merkleTree(chunks);
@@ -116,10 +136,12 @@ const uploadFile = async(req, res) => {
             } else {
                 throw new Error(`Error saving chunk meta data in the file server`);
             }
-        } else {
+        }
+        else {
             return res.status(400).send("Please upload a file!");
         }
-    } catch (err) {
+    }
+    catch (err) {
 
         res.status(500).send({
             message: `Internal Server Error: Could not upload the file: ${req.file.originalname}. ${err}`,
@@ -151,8 +173,8 @@ const deleteTemporyFiles = () => {
     });
 }
 
-const retrieveFile = async(req, res) => {
-    
+const retrieveFile = async (req, res) => {
+
     const fileName = req.params.fileName;
 
     try {
@@ -173,7 +195,7 @@ const retrieveFile = async(req, res) => {
         res.set('Content-Type', 'application/octet-stream');
         res.status(200).send(fileData);
     } catch (error) {
-        console.error('Error retrieving file:', error);
+        console.error('Error retrieving file (retrieveFile):', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
