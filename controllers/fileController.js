@@ -9,24 +9,6 @@ const hash = require('../utils/hash');
 
 var CHUNK_SIZE = 1024 * 1024; // 1MB
 
-const write = (list) => {
-
-    // Convert the list to a JSON string
-    const jsonString = JSON.stringify(list, null, 2); // The second argument formats the JSON for readability
-
-    // Define the file path where the JSON file will be saved
-    const filePath = 'list.json';
-
-    // Write the JSON string to a file
-    fs.writeFile(filePath, jsonString, (err) => {
-        if (err) {
-            console.error('Error writing to file', err);
-        } else {
-            console.log('JSON file has been saved');
-        }
-    });
-}
-
 const uploadFile = async (req, res) => {
     try {
 
@@ -51,8 +33,6 @@ const uploadFile = async (req, res) => {
 
                 chunks.push(chunk); // Keep track of chunk paths
             }
-
-            write(chunks);
 
             // create a Merkle Tree
             let mt = new merkleTree(chunks);
