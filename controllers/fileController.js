@@ -109,7 +109,7 @@ const uploadFile = async (req, res) => {
                     deleteTemporyFiles();
 
                     res.status(200).send({
-                        message: "Uploaded the file successfully: " + req.file.originalname,
+                        message: "file uploaded successfully: " + req.file.originalname,
                     });
                 } 
                 catch (error) {
