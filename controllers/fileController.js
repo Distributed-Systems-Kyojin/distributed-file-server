@@ -150,7 +150,9 @@ const deleteTemporyFiles = () => {
         });
     });
 }
+
 const retrieveFile = async(req, res) => {
+    
     const fileName = req.params.fileName;
 
     try {
@@ -175,8 +177,6 @@ const retrieveFile = async(req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
-
-
 
 
 module.exports = {
