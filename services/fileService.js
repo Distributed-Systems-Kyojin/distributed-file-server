@@ -160,6 +160,7 @@ const getMetadata = async (fileId) => {
                     const metadata = {
                         fileId: row.fileId,
                         fileName: row.fileName,
+                        fileType: row.fileType,
                         chunkCount: row.chunkCount,
                         firstChunkNodeID: row.firstChunkNodeID,
                         firstChunkNodeURL: row.firstChunkNodeURL,

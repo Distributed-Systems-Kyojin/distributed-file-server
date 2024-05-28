@@ -176,10 +176,10 @@ const retrieveFile = async (req, res) => {
             console.warn('File is tampered');
             return res.status(400).json({ error: 'File is tampered' });
         }
-        
+
         // Send the file to the client
         res.set('Content-Disposition', `attachment; filename=${metadata.fileName}`);
-        res.set('Content-Type', getContentType(metadata.fileName));
+        res.set('Content-Type', metadata.fileType);
         res.status(200).send(fileBuffer);
     } catch (error) {
         console.error('Error retrieving file (retrieveFile):', error);
@@ -190,32 +190,12 @@ const retrieveFile = async (req, res) => {
 const retrieveAllFilesMetadata = async(req, res) => {
     try {
         const files = await fileService.retrieveAllFilesMetadata();
-        console.log(files);
         res.status(200).send(files);
     } catch (error) {
         console.error('Error retrieving files:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 }
-const getContentType = (fileName) => {
-
-    const ext = path.extname(fileName).toLowerCase();
-
-    switch (ext) {
-        case '.pdf':
-            return 'application/pdf';
-        case '.txt':
-            return 'text/plain';
-        case '.jpg':
-        case '.jpeg':
-            return 'image/jpeg';
-        case '.png':
-            return 'image/png';
-        default:
-            return 'application/octet-stream'; // fallback content type for unknown file types
-    }
-}
-
 
 module.exports = {
     uploadFile,
