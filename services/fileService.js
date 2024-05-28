@@ -33,7 +33,7 @@ const retrieveFile = async(fileName) => {
 const retrieveAllFilesMetadata = async() => {
     return new Promise((resolve, reject) => {
         db.all(
-            `SELECT fileName FROM Metadata GROUP BY fileName`,
+            `SELECT fileId, fileName, fileType, fileSize, createdAt, lastAccessed, lastModified FROM Metadata`,
             (err, rows) => {
                 if (err) {
                     console.error('Error retrieving metadata:', err);
