@@ -15,7 +15,7 @@ const retrieveFile = async(fileName) => {
         const chunks = await getChunks(metadata.fileName);
 
         // Verify Merkle Root hash
-        const isAuthentic = verifyMerkleRoot(metadata.merkleRootHash, chunks);
+        const isAuthentic = merkleTree.verifyMerkleRoot(chunks, metadata.merkleRootHash);
         if (!isAuthentic) {
             console.error('File is tampered');
             return { tampered: true };
@@ -64,17 +64,11 @@ const getChunks = async(fileName) => {
     }
 };
 
-const verifyMerkleRoot = (merkleRootHash, chunks) => {
-    // Implement logic to verify the Merkle Root hash
-    const mt = new merkleTree(chunks);
-    const calculatedRootHash = mt.getRootHash();
-    
-    return calculatedRootHash === merkleRootHash;
-};
-
-
 const mergeChunks = (fileChunks) => {
-    const mergedOutput = Buffer.concat(fileChunks);
+
+    const bufferChunks = fileChunks.map(chunk => Buffer.from(chunk));
+    const mergedOutput = Buffer.concat(bufferChunks);
+
     return mergedOutput;
 };
 
