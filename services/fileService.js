@@ -32,6 +32,22 @@ const retrieveFile = async(fileName) => {
     }
 };
 
+const retrieveAllFilesMetadata = async() => {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT fileId, fileName, fileType, fileSize, createdAt, lastAccessed, lastModified FROM Metadata`,
+            (err, rows) => {
+                if (err) {
+                    console.error('Error retrieving metadata:', err);
+                    return reject(err);
+                } else {
+                    resolve(rows);
+                }
+            }
+        );
+    });
+};
+
 const getChunks = async(fileName) => {
     
     let chunkDataList = await getChunkData(fileName);
@@ -76,7 +92,6 @@ const mergeChunks = (fileChunks) => {
     return mergedOutput;
 };
 
-
 const saveChunkData = async(chunkData) => {
 
     return new Promise((resolve, reject) => {
@@ -112,8 +127,9 @@ const saveChunkDataList = async(chunkDataList) => {
 const saveMetadata = async(metadata) => {
 
     return new Promise((resolve, reject) => {
+        const { fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed } = metadata;
         db.run(
-            `INSERT INTO Metadata (fileName, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash) VALUES (?, ?, ?, ?, ?)`, [metadata.fileName, metadata.chunkCount, metadata.chunkCount, metadata.firstChunkNodeURL, metadata.merkleRootHash],
+            `INSERT INTO Metadata (fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed],
             (err) => {
                 if (err) {
                     console.error('Could not save metadata', err);
@@ -126,6 +142,7 @@ const saveMetadata = async(metadata) => {
         );
     });
 }
+
 const getMetadata = async (fileName) => {
     return new Promise((resolve, reject) => {
         db.get(
@@ -182,5 +199,6 @@ module.exports = {
     saveChunkDataList,
     saveMetadata,
     getMetadata,
+    retrieveAllFilesMetadata,
     getChunkData
 };
