@@ -14,6 +14,7 @@ const uploadFile = async (req, res) => {
         if (req.file != undefined) {
 
             let fileName = req.file.originalname;
+            let fileId = hash.generateUniqueId(fileName)
             let chunkInfoList = [];
 
             let chunks = [];
@@ -55,6 +56,7 @@ const uploadFile = async (req, res) => {
                 let chunkData = {
                     chunkId: chunkId,
                     chunk: chunk,
+                    fileId: fileId,
                     fileName: fileName,
                     merkleRootHash: rootHash,
                     nextChunkNodeID: nextChunkNodeID,
@@ -64,13 +66,13 @@ const uploadFile = async (req, res) => {
 
                 let nodeResponse = await nodeService.sendFileChunk(node.nodeURL, chunkData);
 
-                // TODO: Handle the response from the node
                 if (nodeResponse.status === 200) {
 
                     console.log(`Chunk ${chunkCount} uploaded to Node ${nodeID}`);
 
                     let chunkInfo = {
                         chunkId: chunkId,
+                        fileId: fileId,
                         fileName: fileName,
                         chunkIndex: chunkCount,
                         chunkNodeID: nodeID,
@@ -93,7 +95,7 @@ const uploadFile = async (req, res) => {
                 console.log('Chunk info saved successfully');
 
                 let metaData = {
-                    fileId: hash.generateUniqueId(fileName),
+                    fileId: fileId,
                     fileName: fileName,
                     fileType: req.file.mimetype,
                     chunkCount: chunks.length,
@@ -159,25 +161,26 @@ const deleteTemporyFiles = () => {
 
 const retrieveFile = async (req, res) => {
 
-    const fileName = req.params.fileName;
+    const fileId = req.params.fileId;
 
     try {
         // Retrieve file data
-        const fileData = await fileService.retrieveFile(fileName);
+        const {metadata, fileBuffer} = await fileService.retrieveFile(fileId);
 
-        if (!fileData) {
+        if (!fileBuffer) {
             return res.status(404).send({ error: 'File not found' });
         }
 
         // Check if file is tampered
-        if (fileData.tampered) {
+        if (fileBuffer.tampered) {
             console.warn('File is tampered');
             return res.status(400).json({ error: 'File is tampered' });
         }
+        
         // Send the file to the client
-        res.set('Content-Disposition', `attachment; filename=${fileName}`);
-        res.set('Content-Type', getContentType(fileName));
-        res.status(200).send(fileData);
+        res.set('Content-Disposition', `attachment; filename=${metadata.fileName}`);
+        res.set('Content-Type', getContentType(metadata.fileName));
+        res.status(200).send(fileBuffer);
     } catch (error) {
         console.error('Error retrieving file (retrieveFile):', error);
         res.status(500).json({ error: 'Internal Server Error' });

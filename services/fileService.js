@@ -2,17 +2,17 @@ const db = require('../db_connection').openDatabase();
 const merkleTree = require('../utils/merkleTree');
 const nodeService = require('./nodeService');
 
-const retrieveFile = async(fileName) => {
+const retrieveFile = async(fileId) => {
     try {
         // Retrieve metadata for the file
-        const metadata = await getMetadata(fileName);
+        const metadata = await getMetadata(fileId);
         if (!metadata) {
             console.log("No Metadata found");
             return null;
         }
         
         // Retrieve chunks from nodes
-        const chunks = await getChunks(metadata.fileName);
+        const chunks = await getChunks(metadata.fileId);
 
         // Verify Merkle Root hash
         const isAuthentic = merkleTree.verifyMerkleRoot(chunks, metadata.merkleRootHash);
@@ -24,7 +24,7 @@ const retrieveFile = async(fileName) => {
         // Merge chunks
         const fileBuffer = mergeChunks(chunks);
         console.log('File retrieved successfully');
-        return fileBuffer;
+        return {metadata, fileBuffer};
 
     } catch (error) {
         console.error('Error retrieving file (fileService):', error);
@@ -48,9 +48,9 @@ const retrieveAllFilesMetadata = async() => {
     });
 };
 
-const getChunks = async(fileName) => {
+const getChunks = async(fileId) => {
     
-    let chunkDataList = await getChunkData(fileName);
+    let chunkDataList = await getChunkData(fileId);
     
     const chunkList = [];
     let nodeURL;
@@ -59,7 +59,7 @@ const getChunks = async(fileName) => {
         for (let nodeIndex = 0; nodeIndex < chunkDataList.length; nodeIndex++) {
 
             nodeURL = chunkDataList[nodeIndex].chunkNodeURL;
-            const response = await nodeService.retrieveChunk(nodeURL, fileName, nodeIndex);
+            const response = await nodeService.retrieveChunk(nodeURL, fileId, nodeIndex);
 
             if (response.status === 200) {
 
@@ -96,7 +96,7 @@ const saveChunkData = async(chunkData) => {
 
     return new Promise((resolve, reject) => {
         db.run(
-            `INSERT INTO ChunkData (chunkID, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?)`, [chunkData.chunkId, chunkData.fileName, chunkData.chunkIndex, chunkData.chunkNodeID, chunkData.chunkNodeURL, chunkData.chunkHash],
+            `INSERT INTO ChunkData (chunkID, fileId, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?, ?)`, [chunkData.chunkId, chunkData.fileId, chunkData.fileName, chunkData.chunkIndex, chunkData.chunkNodeID, chunkData.chunkNodeURL, chunkData.chunkHash],
             (err) => {
                 if (err) {
                     console.error('Could not save chunk data', err);
@@ -143,21 +143,22 @@ const saveMetadata = async(metadata) => {
     });
 }
 
-const getMetadata = async (fileName) => {
+const getMetadata = async (fileId) => {
     return new Promise((resolve, reject) => {
         db.get(
-            `SELECT * FROM Metadata WHERE fileName = ?`, [fileName],
+            `SELECT * FROM Metadata WHERE fileId = ?`, [fileId],
             (err, row) => {
                 if (err) {
                     console.error('Error retrieving metadata:', err);
                     return reject(err);
                 } else {
                     if (!row) {
-                        // If no metadata is found for the given fileName
+                        // If no metadata is found for the given fileId
                         return resolve(null);
                     }
                     // Construct the metadata object
                     const metadata = {
+                        fileId: row.fileId,
                         fileName: row.fileName,
                         chunkCount: row.chunkCount,
                         firstChunkNodeID: row.firstChunkNodeID,
@@ -171,18 +172,18 @@ const getMetadata = async (fileName) => {
     });
 };
 
-const getChunkData = async (fileName) => {
+const getChunkData = async (fileId) => {
 
     return new Promise((resolve, reject) => {
         db.all(
-            `SELECT * FROM ChunkData WHERE fileName = ? GROUP BY chunkNodeID`, [fileName],
+            `SELECT * FROM ChunkData WHERE fileId = ? GROUP BY chunkNodeID`, [fileId],
             (err, rows) => {
                 if (err) {
                     console.error('Error retrieving metadata:', err);
                     return reject(err);
                 } else {
                     if (!rows.length === 0) {
-                        // If no metadata is found for the given fileName
+                        // If no metadata is found for the given fileId
                         return resolve(null);
                     }
                     resolve(rows);
