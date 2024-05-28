@@ -36,7 +36,7 @@ const initDatabase = () => {
             else if (!row) {
 
                 db.run(
-                    'CREATE TABLE MetaData (fileId TEXT, fileName TEXT PRIMARY KEY, fileType TEXT, chunkCount INTEGER, firstChunkNodeID TEXT, firstChunkNodeURL TEXT, merkleRootHash TEXT, fileSize INTEGER, createdAt TEXT, lastModified TEXT, lastAccessed TEXT)',
+                    'CREATE TABLE MetaData (fileId TEXT PRIMARY KEY, fileName TEXT, fileType TEXT, chunkCount INTEGER, firstChunkNodeID TEXT, firstChunkNodeURL TEXT, merkleRootHash TEXT, fileSize INTEGER, createdAt TEXT, lastModified TEXT, lastAccessed TEXT)',
                     (err) => {
                         if (err) {
                             console.error('Could not create MetaData table', err);
@@ -48,7 +48,7 @@ const initDatabase = () => {
                 );
 
                 db.run(
-                    'CREATE TABLE ChunkData (chunkID TEXT PRIMARY KEY, fileName TEXT, chunkIndex INTEGER, chunkNodeID TEXT, chunkNodeURL TEXT, chunkHash TEXT)',
+                    'CREATE TABLE ChunkData (chunkID TEXT PRIMARY KEY, fileId TEXT, fileName TEXT, chunkIndex INTEGER, chunkNodeID TEXT, chunkNodeURL TEXT, chunkHash TEXT)',
                     (err) => {
                         if (err) {
                             console.error('Could not create ChunkData table', err);
