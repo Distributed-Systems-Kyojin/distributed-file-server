@@ -9,7 +9,7 @@ const hash = require('../utils/hash');
 
 const CHUNK_SIZE = 1024 * 1024; // 1MB
 
-const uploadFile = async(req, res) => {
+const uploadFile = async (req, res) => {
     try {
         if (req.file != undefined) {
 
@@ -34,8 +34,7 @@ const uploadFile = async(req, res) => {
             }
 
             // create a Merkle Tree
-            let mt = new merkleTree(chunks);
-            let rootHash = mt.getRootHash();
+            let rootHash = merkleTree.getRootHash(chunks);
 
             let chunkCount = 0;
 
@@ -121,10 +120,12 @@ const uploadFile = async(req, res) => {
             } else {
                 throw new Error(`Error saving chunk meta data in the file server`);
             }
-        } else {
+        }
+        else {
             return res.status(400).send("Please upload a file!");
         }
-    } catch (err) {
+    }
+    catch (err) {
 
         res.status(500).send({
             message: `Internal Server Error: Could not upload the file: ${req.file.originalname}. ${err}`,
@@ -156,8 +157,8 @@ const deleteTemporyFiles = () => {
     });
 }
 
-const retrieveFile = async(req, res) => {
-    
+const retrieveFile = async (req, res) => {
+
     const fileName = req.params.fileName;
 
     try {
@@ -175,10 +176,10 @@ const retrieveFile = async(req, res) => {
         }
         // Send the file to the client
         res.set('Content-Disposition', `attachment; filename=${fileName}`);
-        res.set('Content-Type', 'application/octet-stream');
+        res.set('Content-Type', getContentType(fileName));
         res.status(200).send(fileData);
     } catch (error) {
-        console.error('Error retrieving file:', error);
+        console.error('Error retrieving file (retrieveFile):', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
@@ -193,6 +194,25 @@ const retrieveAllFilesMetadata = async(req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 }
+const getContentType = (fileName) => {
+
+    const ext = path.extname(fileName).toLowerCase();
+
+    switch (ext) {
+        case '.pdf':
+            return 'application/pdf';
+        case '.txt':
+            return 'text/plain';
+        case '.jpg':
+        case '.jpeg':
+            return 'image/jpeg';
+        case '.png':
+            return 'image/png';
+        default:
+            return 'application/octet-stream'; // fallback content type for unknown file types
+    }
+}
+
 
 module.exports = {
     uploadFile,
