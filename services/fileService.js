@@ -30,7 +30,21 @@ const retrieveFile = async(fileName) => {
     }
 };
 
-
+const retrieveAllFilesMetadata = async() => {
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT fileName FROM Metadata GROUP BY fileName`,
+            (err, rows) => {
+                if (err) {
+                    console.error('Error retrieving metadata:', err);
+                    return reject(err);
+                } else {
+                    resolve(rows);
+                }
+            }
+        );
+    });
+};
 
 const getChunks = async(firstChunkNodeURL, fileName) => {
     const chunks = [];
@@ -112,8 +126,9 @@ const saveChunkDataList = async(chunkDataList) => {
 const saveMetadata = async(metadata) => {
 
     return new Promise((resolve, reject) => {
+        const { fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed } = metadata;
         db.run(
-            `INSERT INTO Metadata (fileName, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash) VALUES (?, ?, ?, ?, ?)`, [metadata.fileName, metadata.chunkCount, metadata.chunkCount, metadata.firstChunkNodeURL, metadata.merkleRootHash],
+            `INSERT INTO Metadata (fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed],
             (err) => {
                 if (err) {
                     console.error('Could not save metadata', err);
@@ -160,6 +175,6 @@ module.exports = {
     saveChunkData,
     saveChunkDataList,
     saveMetadata,
-    getMetadata
-
+    getMetadata,
+    retrieveAllFilesMetadata
 };

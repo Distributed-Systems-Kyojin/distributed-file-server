@@ -36,7 +36,7 @@ const initDatabase = () => {
             else if (!row) {
 
                 db.run(
-                    'CREATE TABLE MetaData (fileName TEXT PRIMARY KEY, chunkCount INTEGER, firstChunkNodeID TEXT, firstChunkNodeURL TEXT, merkleRootHash TEXT)',
+                    'CREATE TABLE MetaData (fileId TEXT, fileName TEXT PRIMARY KEY, fileType TEXT, chunkCount INTEGER, firstChunkNodeID TEXT, firstChunkNodeURL TEXT, merkleRootHash TEXT, fileSize INTEGER, createdAt TEXT, lastModified TEXT, lastAccessed TEXT)',
                     (err) => {
                         if (err) {
                             console.error('Could not create MetaData table', err);

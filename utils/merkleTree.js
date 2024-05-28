@@ -7,6 +7,9 @@ class MerkleTree {
   }
 
   hashChunk(chunk) {
+    if (typeof chunk !== 'string' && !Buffer.isBuffer(chunk)) {
+      throw new Error('Expected chunk to be a string or buffer');
+    }
     // Assuming chunk is a string or buffer, we use SHA-256 for hashing
     return crypto.createHash('sha256').update(chunk).digest(); // Returns a Buffer
   }

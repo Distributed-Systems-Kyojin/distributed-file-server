@@ -7,11 +7,10 @@ const fileService = require('../services/fileService');
 const merkleTree = require('../utils/merkleTree');
 const hash = require('../utils/hash');
 
-var CHUNK_SIZE = 1024 * 1024; // 1MB
+const CHUNK_SIZE = 1024 * 1024; // 1MB
 
 const uploadFile = async(req, res) => {
     try {
-
         if (req.file != undefined) {
 
             let fileName = req.file.originalname;
@@ -95,11 +94,17 @@ const uploadFile = async(req, res) => {
                 console.log('Chunk info saved successfully');
 
                 let metaData = {
+                    fileId: hash.generateUniqueId(fileName),
                     fileName: fileName,
+                    fileType: req.file.mimetype,
                     chunkCount: chunks.length,
                     firstChunkNodeID: nodes[0].nodeId,
                     firstChunkNodeURL: nodes[0].nodeURL,
-                    merkleRootHash: rootHash
+                    merkleRootHash: rootHash,
+                    fileSize: fileSize,
+                    createdAt: new Date().toISOString(),
+                    lastModified: new Date().toISOString(),
+                    lastAccessed: new Date().toISOString(),
                 }
 
                 try {
@@ -178,8 +183,19 @@ const retrieveFile = async(req, res) => {
     }
 };
 
+const retrieveAllFilesMetadata = async(req, res) => {
+    try {
+        const files = await fileService.retrieveAllFilesMetadata();
+        console.log(files);
+        res.status(200).send(files);
+    } catch (error) {
+        console.error('Error retrieving files:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
 
 module.exports = {
     uploadFile,
-    retrieveFile
+    retrieveFile,
+    retrieveAllFilesMetadata,
 }
