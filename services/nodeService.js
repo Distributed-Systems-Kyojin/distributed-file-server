@@ -29,10 +29,10 @@ const sendFileChunk = async(nodeURL, chunkData) => {
     return response;
 }
 
-const retrieveChunk = async(nodeURL, fileName, chunkIndex) => {
+const retrieveChunk = async(nodeURL, fileName) => {
     try {
         const response = await axios.get(`${nodeURL}/file/get-chunk`, {
-            params: { fileName, chunkIndex }
+            params: { fileName }
         });
         return response;
     } catch (error) {

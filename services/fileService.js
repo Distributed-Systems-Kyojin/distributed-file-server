@@ -35,27 +35,31 @@ const retrieveFile = async(fileName) => {
 const getChunks = async(fileName) => {
     
     let chunkDataList = await getChunkData(fileName);
-    const chunks = [];
+    
+    const chunkList = [];
     let nodeURL;
 
     try {
-        for (let chunkIndex = 0; chunkIndex < chunkDataList.length; chunkIndex++) {
+        for (let nodeIndex = 0; nodeIndex < chunkDataList.length; nodeIndex++) {
 
-            nodeURL = chunkDataList[chunkIndex].chunkNodeURL;
-            const response = await nodeService.retrieveChunk(nodeURL, fileName, chunkIndex);
+            nodeURL = chunkDataList[nodeIndex].chunkNodeURL;
+            const response = await nodeService.retrieveChunk(nodeURL, fileName, nodeIndex);
 
             if (response.status === 200) {
 
                 const retrieveResponse = response.data;
-                chunks.push(retrieveResponse.chunkData);
+                chunkList.push(...retrieveResponse);
 
-                console.log(`Chunk ${chunkIndex} retrieved from node ${nodeURL}`);
+                console.log(`Chunks retrieved from node ${nodeURL}`);
             } 
             else {
-                throw new Error(`Failed to retrieve chunk ${chunkIndex} from node ${nodeURL}`);
+                throw new Error(`Failed to retrieve chunks from node ${nodeURL}`);
             }
         }
-
+        
+        chunkList.sort((a, b) => a.chunkIndex - b.chunkIndex);
+        const chunks = chunkList.map(chunk => chunk.chunkData);
+        
         return chunks;
     } 
     catch (error) {
@@ -66,7 +70,7 @@ const getChunks = async(fileName) => {
 
 const mergeChunks = (fileChunks) => {
 
-    const bufferChunks = fileChunks.map(chunk => Buffer.from(chunk));
+    const bufferChunks = fileChunks.map(chunk => Buffer.from(chunk.data));
     const mergedOutput = Buffer.concat(bufferChunks);
 
     return mergedOutput;
@@ -154,7 +158,7 @@ const getChunkData = async (fileName) => {
 
     return new Promise((resolve, reject) => {
         db.all(
-            `SELECT * FROM ChunkData WHERE fileName = ? ORDER BY chunkIndex`, [fileName],
+            `SELECT * FROM ChunkData WHERE fileName = ? GROUP BY chunkNodeID`, [fileName],
             (err, rows) => {
                 if (err) {
                     console.error('Error retrieving metadata:', err);
