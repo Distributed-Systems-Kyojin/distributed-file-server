@@ -11,6 +11,7 @@ const makeApp = () => {
     // express app
     const app = express();
 
+    app.options('*', cors())
     app.use(
         cors({
             exposedHeaders: ["x-refresh-token", "x-access-token"],
