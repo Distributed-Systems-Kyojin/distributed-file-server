@@ -1,6 +1,5 @@
 const nodeService = require('../services/nodeService');
 
-
 const registerNode = (req, res) => {
 
     const nodeId = req.body.nodeId;
