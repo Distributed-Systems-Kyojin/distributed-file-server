@@ -6,13 +6,14 @@ const retrieveFile = async(fileId) => {
     try {
         // Retrieve metadata for the file
         const metadata = await getMetadata(fileId);
+
         if (!metadata) {
             console.log("No Metadata found");
             return null;
         }
         
         // Retrieve chunks from nodes
-        const chunks = await getChunks(metadata.fileId);
+        const chunks = await getChunks(fileId);
 
         // Verify Merkle Root hash
         const isAuthentic = merkleTree.verifyMerkleRoot(chunks, metadata.merkleRootHash);
@@ -156,17 +157,7 @@ const getMetadata = async (fileId) => {
                         // If no metadata is found for the given fileId
                         return resolve(null);
                     }
-                    // Construct the metadata object
-                    const metadata = {
-                        fileId: row.fileId,
-                        fileName: row.fileName,
-                        fileType: row.fileType,
-                        chunkCount: row.chunkCount,
-                        firstChunkNodeID: row.firstChunkNodeID,
-                        firstChunkNodeURL: row.firstChunkNodeURL,
-                        merkleRootHash: row.merkleRootHash
-                    };
-                    resolve(metadata);
+                    resolve(row);
                 }
             }
         );
@@ -194,6 +185,23 @@ const getChunkData = async (fileId) => {
     });
 }
 
+const updateLastAccessedDate = async(fileId) => {
+    return new Promise((resolve, reject) => {
+        db.run(
+            `UPDATE Metadata SET lastAccessed = ? WHERE fileId = ?`, [new Date().toISOString(), fileId],
+            (err) => {
+                if (err) {
+                    console.error('Error updating last accessed date:', err);
+                    return reject(err);
+                } else {
+                    console.log('Last accessed date updated successfully');
+                    resolve();
+                }
+            }
+        );
+    });
+}
+
 module.exports = {
     retrieveFile,
     getChunks,
@@ -202,5 +210,6 @@ module.exports = {
     saveMetadata,
     getMetadata,
     retrieveAllFilesMetadata,
-    getChunkData
+    getChunkData,
+    updateLastAccessedDate
 };

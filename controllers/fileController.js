@@ -165,7 +165,7 @@ const retrieveFile = async (req, res) => {
 
     try {
         // Retrieve file data
-        const {metadata, fileBuffer} = await fileService.retrieveFile(fileId);
+        const { metadata, fileBuffer } = await fileService.retrieveFile(fileId);
 
         if (!fileBuffer) {
             return res.status(404).send({ error: 'File not found' });
@@ -180,7 +180,15 @@ const retrieveFile = async (req, res) => {
         // Send the file to the client
         res.set('Content-Disposition', `attachment; filename=${metadata.fileName}`);
         res.set('Content-Type', metadata.fileType);
-        res.status(200).send(fileBuffer);
+        // console.log(fileBuffer);
+        // res.status(200).send(fileBuffer);
+
+        // update last accessed time
+        await fileService.updateLastAccessed(fileId);
+
+        res.status(200);
+        res.write(fileBuffer);
+        res.end();
     } catch (error) {
         console.error('Error retrieving file (retrieveFile):', error);
         res.status(500).json({ error: 'Internal Server Error' });
