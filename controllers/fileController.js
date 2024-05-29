@@ -184,7 +184,7 @@ const retrieveFile = async (req, res) => {
         // res.status(200).send(fileBuffer);
 
         // update last accessed time
-        await fileService.updateLastAccessed(fileId);
+        await fileService.updateLastAccessedDate(fileId);
 
         res.status(200);
         res.write(fileBuffer);
