@@ -1,5 +1,4 @@
 const axios = require('axios');
-const db = require('../db_connection').openDatabase();
 
 var nodeList = [];
 
