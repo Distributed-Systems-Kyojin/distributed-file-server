@@ -1,8 +1,18 @@
-const db = require('../db_connection').openDatabase();
+// const db = require('../db_connection').openDatabase();
+const db = require('../db_connection_pg');
 const merkleTree = require('../utils/merkleTree');
 const nodeService = require('./nodeService');
 
-const retrieveFile = async(fileId) => {
+var pool = null;
+const getPool = async () => {
+
+    if (pool === null) {
+        pool = await db.getDB();
+    }
+}
+getPool();
+
+const retrieveFile = async (fileId) => {
     try {
         // Retrieve metadata for the file
         const metadata = await getMetadata(fileId);
@@ -11,7 +21,7 @@ const retrieveFile = async(fileId) => {
             console.log("No Metadata found");
             return null;
         }
-        
+
         // Retrieve chunks from nodes
         const chunks = await getChunks(fileId);
 
@@ -25,7 +35,7 @@ const retrieveFile = async(fileId) => {
         // Merge chunks
         const fileBuffer = mergeChunks(chunks);
         console.log('File retrieved successfully');
-        return {metadata, fileBuffer};
+        return { metadata, fileBuffer };
 
     } catch (error) {
         console.error('Error retrieving file (fileService):', error);
@@ -33,26 +43,31 @@ const retrieveFile = async(fileId) => {
     }
 };
 
-const retrieveAllFilesMetadata = async() => {
-    return new Promise((resolve, reject) => {
-        db.all(
-            `SELECT fileId, fileName, fileType, fileSize, createdAt, lastAccessed, lastModified FROM Metadata`,
-            (err, rows) => {
-                if (err) {
-                    console.error('Error retrieving metadata:', err);
-                    return reject(err);
-                } else {
-                    resolve(rows);
-                }
-            }
-        );
-    });
-};
+const retrieveAllFilesMetadata = async () => {
+    
+    const selectQuery = {
+        name: 'retrieve-all-files-metadata',
+        text: 'SELECT "fileId", "fileName", "fileType", "fileSize", "createdAt", "lastAccessed", "lastModified" FROM "MetaData"',
+    }
 
-const getChunks = async(fileId) => {
-    
+    try {
+
+        const res = await pool.query(selectQuery);
+        console.log(`Retrieved all metadata`);
+        console.log(res.rows);
+
+        return res.rows;
+    }
+    catch (err) {
+        console.error('Error retrieving metadata:', err);
+        throw err;
+    }
+}
+
+const getChunks = async (fileId) => {
+
     let chunkDataList = await getChunkData(fileId);
-    
+
     const chunkList = [];
     let nodeURL;
 
@@ -68,17 +83,17 @@ const getChunks = async(fileId) => {
                 chunkList.push(...retrieveResponse);
 
                 console.log(`Chunks retrieved from node ${nodeURL}`);
-            } 
+            }
             else {
                 throw new Error(`Failed to retrieve chunks from node ${nodeURL}`);
             }
         }
-        
+
         chunkList.sort((a, b) => a.chunkIndex - b.chunkIndex);
         const chunks = chunkList.map(chunk => chunk.chunkData);
-        
+
         return chunks;
-    } 
+    }
     catch (error) {
         console.error(`Error retrieving chunks (getChunks): ${error}`);
         throw error;
@@ -93,25 +108,35 @@ const mergeChunks = (fileChunks) => {
     return mergedOutput;
 };
 
-const saveChunkData = async(chunkData) => {
+const saveChunkData = async (chunkData) => {
 
-    return new Promise((resolve, reject) => {
-        db.run(
-            `INSERT INTO ChunkData (chunkID, fileId, fileName, chunkIndex, chunkNodeID, chunkNodeURL, chunkHash) VALUES (?, ?, ?, ?, ?, ?, ?)`, [chunkData.chunkId, chunkData.fileId, chunkData.fileName, chunkData.chunkIndex, chunkData.chunkNodeID, chunkData.chunkNodeURL, chunkData.chunkHash],
-            (err) => {
-                if (err) {
-                    console.error('Could not save chunk data', err);
-                    return reject(err);
-                } else {
-                    console.log(`Chunk ${chunkData.chunkIndex}  data saved successfully`);
-                    resolve();
-                }
-            }
-        );
-    });
-}
+    const insertQuery = {
+        name: 'save-chunk-data',
+        text: 'INSERT INTO "ChunkData" ("chunkID", "fileId", "fileName", "chunkIndex", "chunkNodeID", "chunkNodeURL", "chunkHash") VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        values: [
+            chunkData.chunkId,
+            chunkData.fileId,
+            chunkData.fileName,
+            chunkData.chunkIndex,
+            chunkData.chunkNodeID,
+            chunkData.chunkNodeURL,
+            chunkData.chunkHash
+        ],
+    }
 
-const saveChunkDataList = async(chunkDataList) => {
+    try {
+
+        await pool.query(insertQuery);
+        console.log(`Chunk ${chunkData.chunkIndex} data saved successfully`);
+        return;
+    }
+    catch (err) {
+        console.error('Could not save chunk data', err);
+        throw err;
+    }
+};
+
+const saveChunkDataList = async (chunkDataList) => {
 
     for (const chunkData of chunkDataList) {
 
@@ -125,82 +150,102 @@ const saveChunkDataList = async(chunkDataList) => {
     return true;
 }
 
-const saveMetadata = async(metadata) => {
+const saveMetadata = async (metadata) => {
 
-    return new Promise((resolve, reject) => {
-        const { fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed } = metadata;
-        db.run(
-            `INSERT INTO Metadata (fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [fileId, fileName, fileType, chunkCount, firstChunkNodeID, firstChunkNodeURL, merkleRootHash, fileSize, createdAt, lastModified, lastAccessed],
-            (err) => {
-                if (err) {
-                    console.error('Could not save metadata', err);
-                    return reject(err);
-                } else {
-                    console.log('Metadata saved successfully');
-                    resolve();
-                }
-            }
-        );
-    });
-}
+    const insertQuery = {
+        name: 'save-meta-data',
+        text: 'INSERT INTO "MetaData" ("fileId", "fileName", "fileType", "chunkCount", "firstChunkNodeID", "firstChunkNodeURL", "merkleRootHash", "fileSize", "createdAt", "lastModified", "lastAccessed") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+        values: [
+            metadata.fileId,
+            metadata.fileName,
+            metadata.fileType,
+            metadata.chunkCount,
+            metadata.firstChunkNodeID,
+            metadata.firstChunkNodeURL,
+            metadata.merkleRootHash,
+            metadata.fileSize,
+            metadata.createdAt,
+            metadata.lastModified,
+            metadata.lastAccessed
+        ],
+    }
+
+    try {
+
+        await pool.query(insertQuery);
+        console.log('Metadata saved successfully');
+        return;
+    }
+    catch (err) {
+        console.error('Could not save metadata', err);
+        throw err;
+    }
+};
 
 const getMetadata = async (fileId) => {
-    return new Promise((resolve, reject) => {
-        db.get(
-            `SELECT * FROM Metadata WHERE fileId = ?`, [fileId],
-            (err, row) => {
-                if (err) {
-                    console.error('Error retrieving metadata:', err);
-                    return reject(err);
-                } else {
-                    if (!row) {
-                        // If no metadata is found for the given fileId
-                        return resolve(null);
-                    }
-                    resolve(row);
-                }
-            }
-        );
-    });
+
+    const selectQuery = {
+        name: 'get-metadata',
+        text: 'SELECT * FROM "MetaData" WHERE "fileId" = $1',
+        values: [fileId],
+    }
+
+    try {
+        const result = await pool.query(selectQuery);
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        return result.rows[0];
+    }
+    catch (err) {
+        console.error('Error retrieving metadata:', err);
+        throw err;
+    }
 };
 
 const getChunkData = async (fileId) => {
 
-    return new Promise((resolve, reject) => {
-        db.all(
-            `SELECT * FROM ChunkData WHERE fileId = ? GROUP BY chunkNodeID`, [fileId],
-            (err, rows) => {
-                if (err) {
-                    console.error('Error retrieving metadata:', err);
-                    return reject(err);
-                } else {
-                    if (!rows.length === 0) {
-                        // If no metadata is found for the given fileId
-                        return resolve(null);
-                    }
-                    resolve(rows);
-                }
-            }
-        );
-    });
-}
+    const selectQuery = {
+        name: 'get-chunk-data',
+        text: 'SELECT "chunkNodeID", "chunkNodeURL" FROM "ChunkData" WHERE "fileId" = $1 GROUP BY "chunkNodeID", "chunkNodeURL"',
+        values: [fileId],
+    }
 
-const updateLastAccessedDate = async(fileId) => {
-    return new Promise((resolve, reject) => {
-        db.run(
-            `UPDATE Metadata SET lastAccessed = ? WHERE fileId = ?`, [new Date().toISOString(), fileId],
-            (err) => {
-                if (err) {
-                    console.error('Error updating last accessed date:', err);
-                    return reject(err);
-                } else {
-                    console.log('Last accessed date updated successfully');
-                    resolve();
-                }
-            }
-        );
-    });
-}
+    try {
+        const result = await pool.query(selectQuery);
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        return result.rows;
+    }
+    catch (err) {
+        console.error('Error retrieving chunk data:', err);
+        throw err;
+    }
+};
+
+const updateLastAccessedDate = async (fileId) => {
+
+    const updateQuery = {
+        name: 'update-last-accessed-date',
+        text: 'UPDATE "MetaData" SET "lastAccessed" = $1 WHERE "fileId" = $2',
+        values: [new Date().toISOString(), fileId],
+    }
+
+    try {
+        await pool.query(updateQuery);
+        console.log('Last accessed date updated successfully');
+        return;
+    }
+    catch (err) {
+        console.error('Error updating last accessed date:', err);
+        throw err;
+    }
+};
 
 module.exports = {
     retrieveFile,

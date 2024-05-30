@@ -33,11 +33,11 @@ const createDB = async () => {
     }
 
     await client.end();
-    await createPool();
+    await createPool(true);
 }
 
 
-const createPool = async () => {
+const createPool = async (createTable=false) => {
 
     DB_pool = new Pool({
         user: DB_USER,
@@ -54,7 +54,9 @@ const createPool = async () => {
         }
         else {
             console.log('Connected to the PostgreSQL database');
-            await createTables(client);
+            if(createTable){
+                await createTables(client);
+            }
         }
     });
 };
@@ -62,39 +64,49 @@ const createPool = async () => {
 const getDB = async () => {
 
     if (DB_pool === null) {
-        await createPool();
+        await createDB();
     }
 
-    return DB_pool;
+    DB_pool = new Pool({
+        user: DB_USER,
+        host: DB_HOST,
+        database: DB_NAME,
+        password: DB_PASSWORD,
+        port: DB_PORT,
+    });
+
+    const client = await DB_pool.connect();
+
+    return client;
 };
 
 const createTables = async (client) => {
 
     const createMetaDataTable = `
-        CREATE TABLE IF NOT EXISTS MetaData (
-            fileId TEXT PRIMARY KEY, 
-            fileName TEXT, 
-            fileType TEXT, 
-            chunkCount INTEGER, 
-            firstChunkNodeID TEXT, 
-            firstChunkNodeURL TEXT, 
-            merkleRootHash TEXT, 
-            fileSize INTEGER, 
-            createdAt TEXT, 
-            lastModified TEXT, 
-            lastAccessed TEXT
+        CREATE TABLE IF NOT EXISTS "MetaData" (
+            "fileId" TEXT PRIMARY KEY, 
+            "fileName" TEXT, 
+            "fileType" TEXT, 
+            "chunkCount" INTEGER, 
+            "firstChunkNodeID" TEXT, 
+            "firstChunkNodeURL" TEXT, 
+            "merkleRootHash" TEXT, 
+            "fileSize" INTEGER, 
+            "createdAt" TEXT, 
+            "lastModified" TEXT, 
+            "lastAccessed" TEXT
         );
     `;
 
     const createChunkDataTable = `
-        CREATE TABLE IF NOT EXISTS ChunkData (
-            chunkID TEXT PRIMARY KEY, 
-            fileId TEXT, 
-            fileName TEXT, 
-            chunkIndex INTEGER, 
-            chunkNodeID TEXT, 
-            chunkNodeURL TEXT, 
-            chunkHash TEXT
+        CREATE TABLE IF NOT EXISTS "ChunkData" (
+            "chunkID" TEXT PRIMARY KEY, 
+            "fileId" TEXT, 
+            "fileName" TEXT, 
+            "chunkIndex" INTEGER, 
+            "chunkNodeID" TEXT, 
+            "chunkNodeURL" TEXT, 
+            "chunkHash" TEXT
         );
     `;
 
