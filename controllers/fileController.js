@@ -205,8 +205,51 @@ const retrieveAllFilesMetadata = async(req, res) => {
     }
 }
 
+const deleteFile = async (req, res) => {
+    const fileId = req.params.fileId;
+    
+    try {
+        const metadata = await fileService.getMetadata(fileId);
+
+        if (!metadata) {
+            return res.status(404).send({ message: 'File not found' });
+        }
+
+        // delete metadata
+        await fileService.deleteMetadata(fileId);
+
+        const chunkNodeList = await fileService.getChunkData(fileId);
+
+        // check if all nodes are still up
+        const currentNodeList = nodeService.getNodeList();
+        const areNodesAvailable = chunkNodeList.every(node => currentNodeList.some(currentNode => currentNode.nodeId === node.chunkNodeID));
+
+        if (!areNodesAvailable) {
+            return res.status(500).send({ message: 'Some nodes are down and cannot delete the file chunks' });
+        }
+
+        // iterate the nodes and send a request to delete the file chunks
+        for (let i = 0; i < chunkNodeList.length; i++) {
+            const node = chunkNodeList[i];
+            const response = await nodeService.deleteFileChunks(node.chunkNodeURL, fileId);
+
+            if (response.status !== 200) {
+                console.error(`Error deleting file chunks from node ${node.chunkNodeID}`);
+            }
+
+            console.log(`File chunks deleted from node ${node.chunkNodeID}`);
+        }
+
+        res.status(200).send(metadata);
+    } catch (error) {
+        console.error('Error deleting file:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
 module.exports = {
     uploadFile,
     retrieveFile,
     retrieveAllFilesMetadata,
+    deleteFile
 }

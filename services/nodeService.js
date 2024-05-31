@@ -39,6 +39,16 @@ const retrieveChunk = async(nodeURL, fileId) => {
     }
 };
 
+const deleteFileChunks = async (nodeURL, fileId) => {
+    try {
+        const response = await axios.delete(`${nodeURL}/file/delete-chunks/${fileId}`);
+        return response;
+    } catch (error) {
+        console.error(`Error deleting file chunks from node ${nodeURL}:`, error);
+        return null;
+    }
+}
+
 module.exports = {
     addNode,
     removeNode,
@@ -46,5 +56,6 @@ module.exports = {
     getRandomizedNodeList,
     isNodeExists,
     sendFileChunk,
-    retrieveChunk
+    retrieveChunk,
+    deleteFileChunks
 };

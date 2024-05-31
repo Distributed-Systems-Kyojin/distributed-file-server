@@ -51,11 +51,7 @@ const retrieveAllFilesMetadata = async () => {
     }
 
     try {
-
         const res = await pool.query(selectQuery);
-        console.log(`Retrieved all metadata`);
-        console.log(res.rows);
-
         return res.rows;
     }
     catch (err) {
@@ -66,6 +62,7 @@ const retrieveAllFilesMetadata = async () => {
 
 const getChunks = async (fileId) => {
 
+    // chunkDataList is a list of nodes that contain chunks of the file
     let chunkDataList = await getChunkData(fileId);
 
     const chunkList = [];
@@ -247,6 +244,24 @@ const updateLastAccessedDate = async (fileId) => {
     }
 };
 
+const deleteMetadata = async (fileId) => {
+    const deleteQuery = {
+        name: 'delete-metadata',
+        text: 'DELETE FROM "MetaData" WHERE "fileId" = $1',
+        values: [fileId],
+    }
+
+    try {
+        await pool.query(deleteQuery);
+        console.log('Metadata deleted successfully');
+        return;
+    }
+    catch (err) {
+        console.error('Error deleting metadata:', err);
+        throw err;
+    }
+}
+
 module.exports = {
     retrieveFile,
     getChunks,
@@ -256,5 +271,6 @@ module.exports = {
     getMetadata,
     retrieveAllFilesMetadata,
     getChunkData,
-    updateLastAccessedDate
+    updateLastAccessedDate,
+    deleteMetadata
 };
