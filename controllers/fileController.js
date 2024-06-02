@@ -14,7 +14,7 @@ const uploadFile = async (req, res) => {
         if (req.file != undefined) {
 
             let fileName = req.file.originalname;
-            let fileId = hash.generateUniqueId(fileName)
+            let fileId = hash.generateUniqueId()
             let chunkInfoList = [];
 
             let chunks = [];

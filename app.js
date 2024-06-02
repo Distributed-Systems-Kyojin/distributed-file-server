@@ -1,15 +1,19 @@
 const express = require('express');
 const cors = require('cors');
+const createError = require('http-errors');
+const morgan = require('morgan');
 
 // environmental variables
 require('dotenv').config();
 
 const nodeRoutes = require('./routes/nodeRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const makeApp = () => {
     // express app
     const app = express();
+    app.use(morgan('dev'));
 
     app.options('*', cors())
     app.use(
@@ -46,6 +50,22 @@ const makeApp = () => {
     //routes
     app.use('/node', nodeRoutes);
     app.use('/file', fileRoutes);
+    app.use('/auth', authRoutes);
+
+    // handle all other routes
+    app.use(async (req, res, next) => {
+        next(createError.NotFound());
+    });
+
+    app.use((err, req, res, next) => {
+        res.status(err.status || 500);
+        res.send({
+            error: {
+                status: err.status || 500,
+                message: err.message,
+            },
+        });
+    });
 
     return app;
 }

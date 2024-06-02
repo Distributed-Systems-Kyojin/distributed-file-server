@@ -110,26 +110,29 @@ const createTables = async (client) => {
         );
     `;
 
-    await client.query(createMetaDataTable, (err) => {
+    const createUsersTable = `
+        CREATE TABLE IF NOT EXISTS "Users" (
+            "userId" TEXT PRIMARY KEY, 
+            "username" TEXT, 
+            "email" TEXT,
+            "password" TEXT,
+            "verified" BOOLEAN
+        );
+    `;
 
-        if (err) {
-            console.error('Could not create MetaData table', err);
-        }
-        else {
-            console.log('Created MetaData table');
-        }
-    });
-
-    await client.query(createChunkDataTable, (err) => {
-
-        if (err) {
-            console.error('Could not create ChunkData table', err);
-        }
-        else {
-            console.log('Created ChunkData table');
-        }
+    try {
+        await Promise.all([
+            client.query(createMetaDataTable),
+            client.query(createChunkDataTable),
+            client.query(createUsersTable),
+        ]);
+        console.log('Created ChunkData, MetaData and User tables');
+    } catch (error) {
+        console.error('Could not create tables', error);
+        throw error;
+    } finally {
         client.end();
-    });
+    }
 };
 
 module.exports = {
