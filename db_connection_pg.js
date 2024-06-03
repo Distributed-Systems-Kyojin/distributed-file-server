@@ -116,6 +116,7 @@ const createTables = async (client) => {
             "username" TEXT, 
             "email" TEXT,
             "password" TEXT,
+            "refreshToken" TEXT,
             "verified" BOOLEAN
         );
     `;

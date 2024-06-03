@@ -20,18 +20,17 @@ const findUser = async (email) => {
     return result.rows[0];
 }
 
-const saveUser = async (registerSchema) => {
-    const userId = hash.generateUniqueId();
-    const hashedPassword = await hash.hashPassword(registerSchema.password);
+const saveUser = async (user) => {
+    const hashedPassword = await hash.hashPassword(user.password);
 
     const query = {
-        text: 'INSERT INTO "Users" ("userId", "username", "email", "password", "verified") VALUES($1, $2, $3, $4, $5) RETURNING *',
-        values: [userId, registerSchema.username, registerSchema.email, hashedPassword, false]
+        text: 'INSERT INTO "Users" ("userId", "username", "email", "password", "refreshToken", "verified") VALUES($1, $2, $3, $4, $5, $6)',
+        values: [user.userId, user.username, user.email, hashedPassword, user.refreshToken, false]
     }
 
     try {
         const result = await pool.query(query);
-        return result.rows[0];
+        return result;
     } catch (error) {
         throw error;
     }

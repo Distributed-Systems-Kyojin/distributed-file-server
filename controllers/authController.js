@@ -13,11 +13,16 @@ const register = async (req, res, next) => {
         const user = await authService.findUser(validationResult.email);
         if (user) throw createError.Conflict("User already exists");
 
+        const userId = hash.generateUniqueId();
+
+        const accessToken = await signAccessToken(userId);
+        const refreshToken = await signRefreshToken(userId);
+
+        validationResult.userId = userId;
+        validationResult.refreshToken = refreshToken;
+        
         const savedUser = await authService.saveUser(validationResult);
         if (!savedUser) throw createError.InternalServerError("Failed to register user");
-
-        const accessToken = await signAccessToken(savedUser.userId);
-        const refreshToken = await signRefreshToken(savedUser.userId);
 
         res.status(201).send({ accessToken, refreshToken });
 
