@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 const generateHash = (obj) => {
     const objString = JSON.stringify(obj);
@@ -16,13 +17,33 @@ const generateUniqueId = () => {
     return id;
 }
 
-const hash = (string) => {
-    return crypto.createHash('sha256').update(string).digest('hex');
+const hashPassword = async (password) => {
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        return hashedPassword;
+    } catch (error) {
+        throw error;
+    }
+}
+
+const comparePassword = async (password, hashedPassword) => {
+    try {
+        return await bcrypt.compare(password, hashedPassword);
+    } catch (error) {
+        throw error;
+    }
+}
+
+const generateKey = () => {
+    console.log(crypto.randomBytes(32).toString('hex'));
 }
 
 module.exports = {
     generateHash,
     compareHash,
     generateUniqueId,
-    hash
+    hashPassword,
+    comparePassword,
+    generateKey
 };
