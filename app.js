@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const createError = require('http-errors');
 const morgan = require('morgan');
+const { verifyAccessToken } = require('./utils/jwtHelper');
 
 // environmental variables
 require('dotenv').config();
@@ -43,7 +44,7 @@ const makeApp = () => {
     });
 
     //root path
-    app.get('/', (req, res) => {
+    app.get('/', verifyAccessToken, (req, res) => {
         res.send("Welcome...!");
     });
 
