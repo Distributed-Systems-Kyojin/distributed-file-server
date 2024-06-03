@@ -36,7 +36,37 @@ const saveUser = async (user) => {
     }
 }
 
+const findRefreshToken = async (userId) => {
+    const query = {
+        text: 'SELECT "refreshToken" FROM "Users" WHERE "userId" = $1',
+        values: [userId]
+    }
+
+    try {
+        const result = await pool.query(query);
+        return result.rows[0].refreshToken;
+    } catch (error) {
+        throw error;
+    }
+}
+
+const updateRefreshToken = async (userId, refreshToken=null) => {
+    const query = {
+        text: 'UPDATE "Users" SET "refreshToken" = $1 WHERE "userId" = $2',
+        values: [refreshToken, userId]
+    }
+
+    try {
+        const result = await pool.query(query);
+        return result;
+    } catch (error) {
+        throw error;
+    }
+}
+
 module.exports = {
     findUser,
     saveUser,
+    findRefreshToken,
+    updateRefreshToken,
 }

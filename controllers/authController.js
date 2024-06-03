@@ -24,7 +24,8 @@ const register = async (req, res, next) => {
         const savedUser = await authService.saveUser(validationResult);
         if (!savedUser) throw createError.InternalServerError("Failed to register user");
 
-        res.status(201).send({ accessToken, refreshToken });
+        res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        res.status(201).send({ accessToken });
 
     } catch (error) {
         if (error.isJoi === true) error.status = 422;
@@ -45,7 +46,11 @@ const login = async (req, res, next) => {
         const accessToken = await signAccessToken(user.userId);
         const refreshToken = await signRefreshToken(user.userId);
 
-        res.send({ accessToken, refreshToken });
+        const refreshTokenUpdateResult = await authService.updateRefreshToken(user.userId, refreshToken);
+        if (!refreshTokenUpdateResult) throw createError.InternalServerError("Failed to update refresh token");
+
+        res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        res.send({ accessToken });
     } catch (error) {
         if (error.isJoi === true) return next(createError.BadRequest("Invalid username or password"));
         next(error);
@@ -54,11 +59,23 @@ const login = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
     try {
-        const { refreshToken } = req.body;
+        const cookies = req.cookies;
+        if (!cookies) throw createError.BadRequest();
+
+        const refreshToken = cookies.jwt;
         if (!refreshToken) throw createError.BadRequest();
+        
         const userId = await verifyRefreshToken(refreshToken);
-        // remove the refresh token from the database
-        // or blacklist it
+        const user = await authService.findUser(userId);
+        if (!user) {
+            res.clearCookie('jwt', { httpOnly: true });
+            throw createError.Unauthorized("Invalid user");
+        }
+        
+        const result = await authService.updateRefreshToken(userId);
+        if (!result) throw createError.InternalServerError("Failed to logout");
+
+        res.clearCookie('jwt', { httpOnly: true });
         res.status(204).send();
     } catch (error) {
         next(error);
@@ -67,14 +84,20 @@ const logout = async (req, res, next) => {
 
 const refreshToken = async (req, res) => {
     try {
-        const { refreshToken } = req.body;
+        const cookies = req.cookies;
+        if (!cookies) throw createError.BadRequest();
+
+        const refreshToken = cookies.jwt;
+
         if (!refreshToken) throw createError.BadRequest();
         const userId = await verifyRefreshToken(refreshToken);
 
         const accessToken = await signAccessToken(userId);
         const newRefreshToken = await signRefreshToken(userId);
+        await authService.updateRefreshToken(userId, newRefreshToken);
 
-        res.send({ accessToken, refreshToken: newRefreshToken });
+        res.cookie('jwt', newRefreshToken, { httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 });
+        res.send({ accessToken });
 
     } catch (error) {
         next(error);

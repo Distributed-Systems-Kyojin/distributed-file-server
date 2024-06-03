@@ -42,7 +42,7 @@ const signRefreshToken = (userId) => {
         const payload = {};
         const secret = process.env.REFRESH_TOKEN_SECRET;
         const options = {
-            expiresIn: '1y',
+            expiresIn: '1d',
             issuer: 'dfs_file_server',
             audience: userId
         }
