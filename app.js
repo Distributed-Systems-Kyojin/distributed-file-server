@@ -3,6 +3,8 @@ const cors = require('cors');
 const createError = require('http-errors');
 const morgan = require('morgan');
 const { verifyAccessToken } = require('./utils/jwtHelper');
+const allowedOrigins = require('./allowedOrigins');
+const cookieParser = require('cookie-parser');
 
 // environmental variables
 require('dotenv').config();
@@ -16,22 +18,19 @@ const makeApp = () => {
     const app = express();
     app.use(morgan('dev'));
 
-    app.options('*', cors())
-    app.use(
-        cors({
-            exposedHeaders: ["x-refresh-token", "x-access-token"],
-        })
-    );
+    const corsOpts = {
+        origin: allowedOrigins,
+        credentials: true,
+        methods: ['GET', 'POST', 'DELETE'],
+        exposedHeaders: ['x-refresh-token', 'x-access-token']
+    };
+
+    app.use(cors(corsOpts));
     app.use(express.json());
+    app.use(cookieParser());
 
     // middleware & static files
     app.use(express.urlencoded({ extended: true }));
-
-    app.use(function(req, res, next) {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers", "X-Requested-With");
-        next();
-    });
 
     // set static file path for production build
     if (process.env.NODE_ENV === 'production') {
@@ -44,14 +43,14 @@ const makeApp = () => {
     });
 
     //root path
-    app.get('/', verifyAccessToken, (req, res) => {
+    app.get('/', (req, res) => {
         res.send("Welcome...!");
     });
 
     //routes
-    app.use('/node', nodeRoutes);
-    app.use('/file', fileRoutes);
-    app.use('/auth', authRoutes);
+    app.use('/node', nodeRoutes); // doesn't require authentication
+    app.use('/file', fileRoutes); // requires authentication
+    app.use('/auth', authRoutes); // doesn't require authentication
 
     // handle all other routes
     app.use(async (req, res, next) => {
