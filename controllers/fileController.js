@@ -7,131 +7,116 @@ const fileService = require('../services/fileService');
 const merkleTree = require('../utils/merkleTree');
 const hash = require('../utils/hash');
 
+const createError = require('http-errors');
+
 const CHUNK_SIZE = 1024 * 1024; // 1MB
 
-const uploadFile = async (req, res) => {
+const uploadFile = async (req, res, next) => {
     try {
-        if (req.file != undefined) {
+        if (!req.file) return next(createError.BadRequest('No file uploaded'));
 
-            let fileName = req.file.originalname;
-            let fileId = hash.generateUniqueId()
-            let chunkInfoList = [];
+        let fileName = req.file.originalname;
+        let fileId = hash.generateUniqueId()
+        let chunkInfoList = [];
 
-            let chunks = [];
-            let nodes = nodeService.getRandomizedNodeList();
+        let chunks = [];
+        let nodes = nodeService.getRandomizedNodeList();
 
-            const fileBuffer = fs.readFileSync(req.file.path);
-            const fileSize = fileBuffer.length;
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const fileSize = fileBuffer.length;
 
-            const numChunks = Math.ceil(fileSize / CHUNK_SIZE);
+        const numChunks = Math.ceil(fileSize / CHUNK_SIZE);
 
-            for (let i = 0; i < numChunks; i++) {
+        for (let i = 0; i < numChunks; i++) {
 
-                const start = i * CHUNK_SIZE; // Start index
-                const end = (i + 1) * CHUNK_SIZE; // End index
-                const chunk = fileBuffer.slice(start, end); // Slice the buffer
+            const start = i * CHUNK_SIZE; // Start index
+            const end = (i + 1) * CHUNK_SIZE; // End index
+            const chunk = fileBuffer.slice(start, end); // Slice the buffer
 
-                chunks.push(chunk); // Keep track of chunk paths
-            }
-
-            // create a Merkle Tree
-            let rootHash = merkleTree.getRootHash(chunks);
-
-            let chunkCount = 0;
-
-            while (chunkCount < chunks.length) {
-
-                let node = nodes[chunkCount % nodes.length];
-                let nodeID = node.nodeId;
-                let nodeURL = node.nodeURL;
-
-                let chunk = chunks[chunkCount];
-                let chunkHash = hash.generateHash(chunk);
-
-                let chunkId = hash.generateUniqueId(chunkHash);
-                let nextChunkNodeID = chunkCount < chunks.length - 1 ? nodes[(chunkCount + 1) % nodes.length].nodeId : '';
-                let nextChunkNodeURL = chunkCount < chunks.length - 1 ? nodes[(chunkCount + 1) % nodes.length].nodeURL : '';
-                let chunnkIndex = chunkCount;
-
-                let chunkData = {
-                    chunkId: chunkId,
-                    chunk: chunk,
-                    fileId: fileId,
-                    fileName: fileName,
-                    merkleRootHash: rootHash,
-                    nextChunkNodeID: nextChunkNodeID,
-                    nextChunkNodeURL: nextChunkNodeURL,
-                    chunkIndex: chunnkIndex,
-                };
-
-                let nodeResponse = await nodeService.sendFileChunk(node.nodeURL, chunkData);
-
-                if (nodeResponse.status === 200) {
-
-                    console.log(`Chunk ${chunkCount} uploaded to Node ${nodeID}`);
-
-                    let chunkInfo = {
-                        chunkId: chunkId,
-                        fileId: fileId,
-                        fileName: fileName,
-                        chunkIndex: chunkCount,
-                        chunkNodeID: nodeID,
-                        chunkNodeURL: nodeURL,
-                        chunkHash: chunkHash,
-                    };
-
-                    chunkInfoList.push(chunkInfo);
-                    chunkCount += 1;
-
-                    console.log(`${chunkCount} chunks uploaded`);
-                } else {
-                    console.error(`Error uploading Chunk ${chunkCount} to Node ${nodeID}`);
-                    throw new Error(`Error uploading Chunk ${chunkCount} to Node ${nodeID}`);
-                }
-            }
-
-            if (await fileService.saveChunkDataList(chunkInfoList)) {
-
-                console.log('Chunk info saved successfully');
-
-                let metaData = {
-                    fileId: fileId,
-                    fileName: fileName,
-                    fileType: req.file.mimetype,
-                    chunkCount: chunks.length,
-                    firstChunkNodeID: nodes[0].nodeId,
-                    firstChunkNodeURL: nodes[0].nodeURL,
-                    merkleRootHash: rootHash,
-                    fileSize: fileSize,
-                    createdAt: new Date().toISOString(),
-                    lastModified: new Date().toISOString(),
-                    lastAccessed: new Date().toISOString(),
-                }
-
-                try {
-
-                    await fileService.saveMetadata(metaData);
-                    deleteTemporyFiles();
-
-                    res.status(200).send({
-                        message: "file uploaded successfully: " + req.file.originalname,
-                    });
-                } catch (error) {
-                    throw new Error(`Error saving file metadata in the file server`);
-                }
-            } else {
-                throw new Error(`Error saving chunk meta data in the file server`);
-            }
+            chunks.push(chunk); // Keep track of chunk paths
         }
-        else {
-            return res.status(400).send("Please upload a file!");
+
+        // create a Merkle Tree
+        let rootHash = merkleTree.getRootHash(chunks);
+
+        let chunkCount = 0;
+
+        while (chunkCount < chunks.length) {
+
+            let node = nodes[chunkCount % nodes.length];
+            let nodeID = node.nodeId;
+            let nodeURL = node.nodeURL;
+
+            let chunk = chunks[chunkCount];
+            let chunkHash = hash.generateHash(chunk);
+
+            let chunkId = hash.generateUniqueId(chunkHash);
+            let nextChunkNodeID = chunkCount < chunks.length - 1 ? nodes[(chunkCount + 1) % nodes.length].nodeId : '';
+            let nextChunkNodeURL = chunkCount < chunks.length - 1 ? nodes[(chunkCount + 1) % nodes.length].nodeURL : '';
+            let chunnkIndex = chunkCount;
+
+            let chunkData = {
+                chunkId: chunkId,
+                chunk: chunk,
+                fileId: fileId,
+                fileName: fileName,
+                merkleRootHash: rootHash,
+                nextChunkNodeID: nextChunkNodeID,
+                nextChunkNodeURL: nextChunkNodeURL,
+                chunkIndex: chunnkIndex,
+            };
+
+            let nodeResponse = await nodeService.sendFileChunk(node.nodeURL, chunkData);
+            if (!nodeResponse) next(createError.InternalServerError('Error uploading chunk to node'));
+
+            console.log(`Chunk ${chunkCount} uploaded to Node ${nodeID}`);
+
+            let chunkInfo = {
+                chunkId: chunkId,
+                fileId: fileId,
+                fileName: fileName,
+                chunkIndex: chunkCount,
+                chunkNodeID: nodeID,
+                chunkNodeURL: nodeURL,
+                chunkHash: chunkHash,
+            };
+
+            chunkInfoList.push(chunkInfo);
+            chunkCount += 1;
+
+            console.log(`${chunkCount} chunks uploaded`);
         }
+
+        const saveChunkListRes = await fileService.saveChunkDataList(chunkInfoList);
+        if (!saveChunkListRes) next(createError.InternalServerError('Error saving chunk data in the file server'));
+
+        console.log('Chunk info saved successfully');
+
+        let metaData = {
+            fileId: fileId,
+            fileName: fileName,
+            fileType: req.file.mimetype,
+            chunkCount: chunks.length,
+            firstChunkNodeID: nodes[0].nodeId,
+            firstChunkNodeURL: nodes[0].nodeURL,
+            merkleRootHash: rootHash,
+            fileSize: fileSize,
+            createdAt: new Date().toISOString(),
+            lastModified: new Date().toISOString(),
+            lastAccessed: new Date().toISOString(),
+        }
+
+        const saveMetaDataRes = await fileService.saveMetadata(metaData);
+        if (!saveMetaDataRes) next(createError.InternalServerError('Error saving metadata in the file server'));
+
+        deleteTemporyFiles();
+
+        res.status(200).send({
+            message: "file uploaded successfully: " + req.file.originalname,
+        });
     }
     catch (err) {
-
-        res.status(500).send({
-            message: `Internal Server Error: Could not upload the file: ${req.file.originalname}. ${err}`,
-        });
+        next(createError.InternalServerError('Error uploading file'));
     }
 }
 
@@ -159,39 +144,42 @@ const deleteTemporyFiles = () => {
     });
 }
 
-const retrieveFile = async (req, res) => {
+const retrieveFile = async (req, res, next) => {
 
     const fileId = req.params.fileId;
+    if (!fileId) return next(createError.BadRequest('File ID is required'));
 
     try {
         // Retrieve file data
         const { metadata, fileBuffer } = await fileService.retrieveFile(fileId);
 
-        if (!fileBuffer) {
-            return res.status(404).send({ error: 'File not found' });
-        }
+        if (!metadata) return next(createError.NotFound('File not found'));
+        if (!fileBuffer) return next(createError.NotFound('File not found'));
 
         // Check if file is tampered
         if (fileBuffer.tampered) {
             console.warn('File is tampered');
-            return res.status(400).json({ error: 'File is tampered' });
+            return next(createError.BadRequest('File is tampered'));
         }
 
         // Send the file to the client
         res.set('Content-Disposition', `attachment; filename=${metadata.fileName}`);
         res.set('Content-Type', metadata.fileType);
-        // console.log(fileBuffer);
-        // res.status(200).send(fileBuffer);
 
         // update last accessed time
-        await fileService.updateLastAccessedDate(fileId);
+        const updateLastAccessedDateRes = await fileService.updateLastAccessedDate(fileId);
+        if (!updateLastAccessedDateRes) {
+            console.error('Error updating last accessed date');
+            // client doesn't need to know the exact error here
+            return next(createError.InternalServerError('Error retrieving file'));
+        }
 
-        res.status(200);
         res.write(fileBuffer);
-        res.end();
+
+        res.status(200).end();
     } catch (error) {
         console.error('Error retrieving file (retrieveFile):', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        next(error);
     }
 };
 

@@ -23,8 +23,12 @@ const isNodeExists = (nodeId, nodeURL) => {
 }
 
 const sendFileChunk = async(nodeURL, chunkData) => {
-    let response = await axios.post(nodeURL + '/file/save-chunk', chunkData);
-    return response;
+    try {
+        let response = await axios.post(nodeURL + '/file/save-chunk', chunkData);
+        return response;
+    } catch (error) {
+        throw error;
+    }
 }
 
 const retrieveChunk = async(nodeURL, fileId) => {
@@ -35,7 +39,7 @@ const retrieveChunk = async(nodeURL, fileId) => {
         return response;
     } catch (error) {
         console.error(`(nodeService) Error retrieving chunk ${chunkIndex} from ${nodeURL}: ${error.message}`);
-        return null;
+        throw error;
     }
 };
 

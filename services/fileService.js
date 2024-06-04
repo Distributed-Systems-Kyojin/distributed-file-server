@@ -39,7 +39,7 @@ const retrieveFile = async (fileId) => {
 
     } catch (error) {
         console.error('Error retrieving file (fileService):', error);
-        return null;
+        throw error;
     }
 };
 
@@ -73,17 +73,12 @@ const getChunks = async (fileId) => {
 
             nodeURL = chunkDataList[nodeIndex].chunkNodeURL;
             const response = await nodeService.retrieveChunk(nodeURL, fileId, nodeIndex);
+            if (!response) throw new Error(`Failed to retrieve chunks from node ${nodeURL}`);
 
-            if (response.status === 200) {
+            const retrieveResponse = response.data;
+            chunkList.push(...retrieveResponse);
 
-                const retrieveResponse = response.data;
-                chunkList.push(...retrieveResponse);
-
-                console.log(`Chunks retrieved from node ${nodeURL}`);
-            }
-            else {
-                throw new Error(`Failed to retrieve chunks from node ${nodeURL}`);
-            }
+            console.log(`Chunks retrieved from node ${nodeURL}`);
         }
 
         chunkList.sort((a, b) => a.chunkIndex - b.chunkIndex);
@@ -122,10 +117,9 @@ const saveChunkData = async (chunkData) => {
     }
 
     try {
-
-        await pool.query(insertQuery);
+        const result = await pool.query(insertQuery);
         console.log(`Chunk ${chunkData.chunkIndex} data saved successfully`);
-        return;
+        return result;
     }
     catch (err) {
         console.error('Could not save chunk data', err);
@@ -136,19 +130,17 @@ const saveChunkData = async (chunkData) => {
 const saveChunkDataList = async (chunkDataList) => {
 
     for (const chunkData of chunkDataList) {
-
         try {
-            await saveChunkData(chunkData);
+            const result = await saveChunkData(chunkData);
         } catch (error) {
             console.error(`Error saving chunk data for chunk ${chunkData.chunkIndex}`);
-            return false;
+            throw error;
         }
     }
     return true;
 }
 
 const saveMetadata = async (metadata) => {
-
     const insertQuery = {
         name: 'save-meta-data',
         text: 'INSERT INTO "MetaData" ("fileId", "fileName", "fileType", "chunkCount", "firstChunkNodeID", "firstChunkNodeURL", "merkleRootHash", "fileSize", "createdAt", "lastModified", "lastAccessed") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
@@ -168,10 +160,9 @@ const saveMetadata = async (metadata) => {
     }
 
     try {
-
-        await pool.query(insertQuery);
+        const result = await pool.query(insertQuery);
         console.log('Metadata saved successfully');
-        return;
+        return result;
     }
     catch (err) {
         console.error('Could not save metadata', err);
@@ -212,11 +203,6 @@ const getChunkData = async (fileId) => {
 
     try {
         const result = await pool.query(selectQuery);
-
-        if (result.rows.length === 0) {
-            return null;
-        }
-
         return result.rows;
     }
     catch (err) {
@@ -234,9 +220,9 @@ const updateLastAccessedDate = async (fileId) => {
     }
 
     try {
-        await pool.query(updateQuery);
+        const result = await pool.query(updateQuery);
         console.log('Last accessed date updated successfully');
-        return;
+        return result;
     }
     catch (err) {
         console.error('Error updating last accessed date:', err);
@@ -252,9 +238,9 @@ const deleteMetadata = async (fileId) => {
     }
 
     try {
-        await pool.query(deleteQuery);
+        const result = await pool.query(deleteQuery);
         console.log('Metadata deleted successfully');
-        return;
+        return result;
     }
     catch (err) {
         console.error('Error deleting metadata:', err);
