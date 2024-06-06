@@ -30,7 +30,7 @@ const verifyAccessToken = (req, res, next) => {
         if (err) {
             // if the err.name is not JsonWebTokenError, then it is either 'TokenExpiredError' or 'NotBeforeError', thus not a security issue to send the actual error.message to the client
             const message = err.name === 'JsonWebTokenError' ? 'Unauthorized' : err.message;
-            console.log("from verify access token: ", err.message);
+            console.log("from verify access token: ", err.name);
             return next(createError.Unauthorized(message));
         }
         req.payload = payload;

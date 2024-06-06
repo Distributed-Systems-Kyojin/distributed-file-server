@@ -147,19 +147,20 @@ const deleteTemporyFiles = () => {
 const retrieveFile = async (req, res, next) => {
 
     const fileId = req.params.fileId;
-    if (!fileId) return next(createError.BadRequest('File ID is required'));
+    if (!fileId) throw createError.BadRequest('File ID is required');
+    console.log("inside retrieve file method");
 
     try {
         // Retrieve file data
         const { metadata, fileBuffer } = await fileService.retrieveFile(fileId);
 
-        if (!metadata) return next(createError.NotFound('File not found'));
-        if (!fileBuffer) return next(createError.NotFound('File not found'));
+        if (!metadata) throw createError.NotFound('File not found');
+        if (!fileBuffer) throw createError.NotFound('File not found');
 
         // Check if file is tampered
         if (fileBuffer.tampered) {
             console.warn('File is tampered');
-            return next(createError.BadRequest('File is tampered'));
+            throw createError.BadRequest('File is tampered');
         }
 
         // Send the file to the client
@@ -171,12 +172,12 @@ const retrieveFile = async (req, res, next) => {
         if (!updateLastAccessedDateRes) {
             console.error('Error updating last accessed date');
             // client doesn't need to know the exact error here
-            return next(createError.InternalServerError('Error retrieving file'));
+            throw createError.InternalServerError('Error retrieving file');
         }
 
         res.write(fileBuffer);
-
         res.status(200).end();
+
     } catch (error) {
         console.error('Error retrieving file (retrieveFile):', error);
         next(error);
