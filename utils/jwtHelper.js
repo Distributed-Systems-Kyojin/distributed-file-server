@@ -6,7 +6,7 @@ const signAccessToken = (userId) => {
         const payload = {};
         const secret = process.env.ACCESS_TOKEN_SECRET;
         const options = {
-            expiresIn: '10s',
+            expiresIn: '1h',
             issuer: 'dfs_file_server',
             audience: userId
         }
