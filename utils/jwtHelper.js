@@ -6,7 +6,7 @@ const signAccessToken = (userId) => {
         const payload = {};
         const secret = process.env.ACCESS_TOKEN_SECRET;
         const options = {
-            expiresIn: '1h',
+            expiresIn: '10s',
             issuer: 'dfs_file_server',
             audience: userId
         }
@@ -30,6 +30,7 @@ const verifyAccessToken = (req, res, next) => {
         if (err) {
             // if the err.name is not JsonWebTokenError, then it is either 'TokenExpiredError' or 'NotBeforeError', thus not a security issue to send the actual error.message to the client
             const message = err.name === 'JsonWebTokenError' ? 'Unauthorized' : err.message;
+            console.log("from verify access token: ", err.message);
             return next(createError.Unauthorized(message));
         }
         req.payload = payload;
@@ -60,12 +61,17 @@ const signRefreshToken = (userId) => {
 const verifyRefreshToken = async (refreshToken) => {
     return new Promise((resolve, reject) => {
         JWT.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, payload) => {
-            if (err) return reject(createError.Unauthorized());
+            if (err) {
+                const message = err.name === 'JsonWebTokenError' ? 'Unauthorized' : err.message;
+                console.log("from verify refresh token: ", message);
+                return reject(createError.Forbidden(message));
+            }
             const userId = payload.aud;
+            if (!userId) return reject(createError.Forbidden());
+
             resolve(userId);
         });
     });
-
 }
 
 module.exports = {

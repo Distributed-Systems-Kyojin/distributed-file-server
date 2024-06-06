@@ -47,7 +47,7 @@ const login = async (req, res, next) => {
         const refreshToken = await signRefreshToken(user.userId);
 
         const refreshTokenUpdateResult = await authService.updateRefreshToken(user.userId, refreshToken);
-        if (!refreshTokenUpdateResult) throw createError.InternalServerError("Failed to update refresh token");
+        if (!refreshTokenUpdateResult) throw createError.InternalServerError();
 
         res.cookie('jwt', refreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
         res.send({ accessToken });
@@ -82,22 +82,27 @@ const logout = async (req, res, next) => {
     }
 }
 
-const refreshToken = async (req, res) => {
+const refreshToken = async (req, res, next) => {
     try {
         const cookies = req.cookies;
-        if (!cookies) throw createError.BadRequest();
+        if (!cookies) throw createError.Forbidden();
 
         const refreshToken = cookies.jwt;
+        if (!refreshToken) throw createError.Forbidden();
 
-        if (!refreshToken) throw createError.BadRequest();
         const userId = await verifyRefreshToken(refreshToken);
+
+        // check the refresh token with the one stored in the database
+        const refreshTokenDB = await authService.getRefreshToken(userId);
+        if (refreshToken !== refreshTokenDB) throw createError.Forbidden("Refresh token mismatch");
 
         const accessToken = await signAccessToken(userId);
         const newRefreshToken = await signRefreshToken(userId);
-        await authService.updateRefreshToken(userId, newRefreshToken);
+        const result = await authService.updateRefreshToken(userId, newRefreshToken);
+        if (!result) throw createError.Forbidden();
 
-        res.cookie('jwt', newRefreshToken, { httpOnly: true, secure: true, maxAge: 24 * 60 * 60 * 1000 });
-        res.send({ accessToken });
+        res.cookie('jwt', newRefreshToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        res.status(200).send({ accessToken });
 
     } catch (error) {
         next(error);
