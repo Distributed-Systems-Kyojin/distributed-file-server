@@ -36,7 +36,7 @@ const saveUser = async (user) => {
     }
 }
 
-const findRefreshToken = async (userId) => {
+const getRefreshToken = async (userId) => {
     const query = {
         text: 'SELECT "refreshToken" FROM "Users" WHERE "userId" = $1',
         values: [userId]
@@ -67,6 +67,6 @@ const updateRefreshToken = async (userId, refreshToken=null) => {
 module.exports = {
     findUser,
     saveUser,
-    findRefreshToken,
+    getRefreshToken,
     updateRefreshToken,
 }
