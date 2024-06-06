@@ -183,13 +183,14 @@ const retrieveFile = async (req, res, next) => {
     }
 };
 
-const retrieveAllFilesMetadata = async(req, res) => {
+const retrieveAllFilesMetadata = async(req, res, next) => {
     try {
         const files = await fileService.retrieveAllFilesMetadata();
+        if (!files) return next(createError.NotFound('No files found'));
         res.status(200).send(files);
     } catch (error) {
         console.error('Error retrieving files:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        next(error);
     }
 }
 
@@ -199,9 +200,7 @@ const deleteFile = async (req, res) => {
     try {
         const metadata = await fileService.getMetadata(fileId);
 
-        if (!metadata) {
-            return res.status(404).send({ message: 'File not found' });
-        }
+        if (!metadata) return createError.NotFound('File not found');
 
         // delete metadata
         await fileService.deleteMetadata(fileId);
@@ -212,9 +211,7 @@ const deleteFile = async (req, res) => {
         const currentNodeList = nodeService.getNodeList();
         const areNodesAvailable = chunkNodeList.every(node => currentNodeList.some(currentNode => currentNode.nodeId === node.chunkNodeID));
 
-        if (!areNodesAvailable) {
-            return res.status(500).send({ message: 'Some nodes are down and cannot delete the file chunks' });
-        }
+        if (!areNodesAvailable) return createError.ServiceUnavailable('Some nodes are down');
 
         // iterate the nodes and send a request to delete the file chunks
         for (let i = 0; i < chunkNodeList.length; i++) {
