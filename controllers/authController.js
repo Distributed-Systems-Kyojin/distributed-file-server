@@ -60,16 +60,17 @@ const login = async (req, res, next) => {
 const logout = async (req, res, next) => {
     try {
         const cookies = req.cookies;
-        if (!cookies) throw createError.BadRequest();
+        if (!cookies?.jwt) return res.sendStatus(204);
 
         const refreshToken = cookies.jwt;
-        if (!refreshToken) throw createError.BadRequest();
         
+        // refresh token errors (forbidden ones will automatically log out the user from the frontend)
         const userId = await verifyRefreshToken(refreshToken);
+
         const user = await authService.findUser(userId);
         if (!user) {
             res.clearCookie('jwt', { httpOnly: true });
-            throw createError.Unauthorized("Invalid user");
+            return res.sendStatus(204);
         }
         
         const result = await authService.updateRefreshToken(userId);
