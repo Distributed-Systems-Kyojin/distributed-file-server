@@ -43,11 +43,12 @@ const retrieveFile = async (fileId) => {
     }
 };
 
-const retrieveAllFilesMetadata = async () => {
+const retrieveAllFilesMetadata = async (userId) => {
     
     const selectQuery = {
         name: 'retrieve-all-files-metadata',
-        text: 'SELECT "fileId", "fileName", "fileType", "fileSize", "createdAt", "lastAccessed", "lastModified" FROM "MetaData"',
+        text: 'SELECT "fileId", "fileName", "fileType", "fileSize", "createdAt", "lastAccessed", "lastModified" FROM "MetaData" WHERE "userId" = $1',
+        values: [userId],
     }
 
     try {
@@ -143,9 +144,10 @@ const saveChunkDataList = async (chunkDataList) => {
 const saveMetadata = async (metadata) => {
     const insertQuery = {
         name: 'save-meta-data',
-        text: 'INSERT INTO "MetaData" ("fileId", "fileName", "fileType", "chunkCount", "firstChunkNodeID", "firstChunkNodeURL", "merkleRootHash", "fileSize", "createdAt", "lastModified", "lastAccessed") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+        text: 'INSERT INTO "MetaData" ("fileId", "userId", "fileName", "fileType", "chunkCount", "firstChunkNodeID", "firstChunkNodeURL", "merkleRootHash", "fileSize", "createdAt", "lastModified", "lastAccessed") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
         values: [
             metadata.fileId,
+            metadata.userId,
             metadata.fileName,
             metadata.fileType,
             metadata.chunkCount,
@@ -248,6 +250,24 @@ const deleteMetadata = async (fileId) => {
     }
 }
 
+const deleteChunkData = async (fileId) => {
+    const deleteQuery = {
+        name: 'delete-chunk-data',
+        text: 'DELETE FROM "ChunkData" WHERE "fileId" = $1',
+        values: [fileId],
+    }
+
+    try {
+        const result = await pool.query(deleteQuery);
+        console.log('Chunk data deleted successfully');
+        return result;
+    }
+    catch (err) {
+        console.error('Error deleting chunk data:', err);
+        throw err;
+    }
+}
+
 module.exports = {
     retrieveFile,
     getChunks,
@@ -258,5 +278,6 @@ module.exports = {
     retrieveAllFilesMetadata,
     getChunkData,
     updateLastAccessedDate,
-    deleteMetadata
+    deleteMetadata,
+    deleteChunkData
 };

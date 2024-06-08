@@ -15,6 +15,8 @@ const uploadFile = async (req, res, next) => {
     try {
         if (!req.file) return next(createError.BadRequest('No file uploaded'));
 
+        const userId = req.payload.aud
+
         let fileName = req.file.originalname;
         let fileId = hash.generateUniqueId()
         let chunkInfoList = [];
@@ -38,6 +40,26 @@ const uploadFile = async (req, res, next) => {
 
         // create a Merkle Tree
         let rootHash = merkleTree.getRootHash(chunks);
+        
+        let metaData = {
+            fileId: fileId,
+            userId: userId,
+            fileName: fileName,
+            fileType: req.file.mimetype,
+            chunkCount: chunks.length,
+            firstChunkNodeID: nodes[0].nodeId,
+            firstChunkNodeURL: nodes[0].nodeURL,
+            merkleRootHash: rootHash,
+            fileSize: fileSize,
+            createdAt: new Date().toISOString(),
+            lastModified: new Date().toISOString(),
+            lastAccessed: new Date().toISOString(),
+        }
+
+        const saveMetaDataRes = await fileService.saveMetadata(metaData);
+        if (!saveMetaDataRes) next(createError.InternalServerError('Error saving metadata in the file server'));
+
+        deleteTemporyFiles();
 
         let chunkCount = 0;
 
@@ -91,25 +113,6 @@ const uploadFile = async (req, res, next) => {
         if (!saveChunkListRes) next(createError.InternalServerError('Error saving chunk data in the file server'));
 
         console.log('Chunk info saved successfully');
-
-        let metaData = {
-            fileId: fileId,
-            fileName: fileName,
-            fileType: req.file.mimetype,
-            chunkCount: chunks.length,
-            firstChunkNodeID: nodes[0].nodeId,
-            firstChunkNodeURL: nodes[0].nodeURL,
-            merkleRootHash: rootHash,
-            fileSize: fileSize,
-            createdAt: new Date().toISOString(),
-            lastModified: new Date().toISOString(),
-            lastAccessed: new Date().toISOString(),
-        }
-
-        const saveMetaDataRes = await fileService.saveMetadata(metaData);
-        if (!saveMetaDataRes) next(createError.InternalServerError('Error saving metadata in the file server'));
-
-        deleteTemporyFiles();
 
         res.status(200).send({
             message: "file uploaded successfully: " + req.file.originalname,
@@ -186,7 +189,8 @@ const retrieveFile = async (req, res, next) => {
 
 const retrieveAllFilesMetadata = async(req, res, next) => {
     try {
-        const files = await fileService.retrieveAllFilesMetadata();
+        const userId = req.payload.aud;
+        const files = await fileService.retrieveAllFilesMetadata(userId);
         if (!files) return next(createError.NotFound('No files found'));
         res.status(200).send(files);
     } catch (error) {
@@ -202,9 +206,6 @@ const deleteFile = async (req, res) => {
         const metadata = await fileService.getMetadata(fileId);
 
         if (!metadata) return createError.NotFound('File not found');
-
-        // delete metadata
-        await fileService.deleteMetadata(fileId);
 
         const chunkNodeList = await fileService.getChunkData(fileId);
 
@@ -225,6 +226,12 @@ const deleteFile = async (req, res) => {
 
             console.log(`File chunks deleted from node ${node.chunkNodeID}`);
         }
+
+        // delete chunk data
+        await fileService.deleteChunkData(fileId);
+        
+        // delete metadata
+        await fileService.deleteMetadata(fileId);
 
         res.status(200).send(metadata);
     } catch (error) {

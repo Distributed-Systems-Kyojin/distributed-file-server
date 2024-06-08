@@ -85,6 +85,7 @@ const createTables = async (client) => {
     const createMetaDataTable = `
         CREATE TABLE IF NOT EXISTS "MetaData" (
             "fileId" TEXT PRIMARY KEY, 
+            "userId" TEXT REFERENCES "Users"("userId"),
             "fileName" TEXT, 
             "fileType" TEXT, 
             "chunkCount" INTEGER, 
@@ -101,7 +102,7 @@ const createTables = async (client) => {
     const createChunkDataTable = `
         CREATE TABLE IF NOT EXISTS "ChunkData" (
             "chunkID" TEXT PRIMARY KEY, 
-            "fileId" TEXT, 
+            "fileId" TEXT REFERENCES "MetaData"("fileId"), 
             "fileName" TEXT, 
             "chunkIndex" INTEGER, 
             "chunkNodeID" TEXT, 
@@ -123,9 +124,9 @@ const createTables = async (client) => {
 
     try {
         await Promise.all([
+            client.query(createUsersTable),
             client.query(createMetaDataTable),
             client.query(createChunkDataTable),
-            client.query(createUsersTable),
         ]);
         console.log('Created ChunkData, MetaData and User tables');
     } catch (error) {
